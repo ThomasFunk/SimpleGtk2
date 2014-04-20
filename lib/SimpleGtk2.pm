@@ -45,7 +45,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 	
 );
 
-$VERSION = '0.55';
+$VERSION = '0.56';
 
 ######################################################################
 # internal functions
@@ -160,6 +160,18 @@ sub _set_commons($@) {
     my $type = $object->{type};
 
     # widget common fields
+    my $function = undef;
+    my $data = undef;
+    if (defined($params{'function'})) {
+        if (ref($params{'function'} =~ 'ARRAY')) {
+            $function = $params{'function'}[0];
+            $data = $params{'function'}[1];
+        } else {
+            $function = $params{'function'};
+        }
+    }
+    
+    
     my $function = $params{'function'} || undef;
     my $signal = $params{'signal'} || undef;
     my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
@@ -171,7 +183,7 @@ sub _set_commons($@) {
     
     # add signal handler if function is given
     if (defined($function)) {
-        $self->add_signal_handler($object->{name}, $signal, $function);
+        $self->add_signal_handler($object->{name}, $signal, $function, $data);
     }
 
     # set sensitive state
@@ -610,6 +622,53 @@ sub add_button($@) {
     $self->add_to_container($object->{name});
 
     $button->show;
+}
+
+
+# ---------------------------------------------------------------------
+# add_link_button(  Name => <name>,                <= Name of the button. Must be unique
+#                   Pos => [pos_x, pos_y], 
+#                   Title => <title>,
+#                   Size => [width, height],       <= Optional
+#                   Uri => <Uri-text>)             <= A valid URI. It is the tooltip as well.
+#                   Frame => <frame_name>          <= Name of the frame where widget is located. Must be unique
+#                   Func => <function_click>       <= Optional. Can be set later with add_signal_handler
+#                   Sig => <signal>                <= Optional. Only in conjunction with Func
+#                   Sens => <sensitive>            <= Optional. Default: 1
+# ---------------------------------------------------------------------
+sub add_link_button($@) {
+    my $self = shift;
+    my %params = _normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'LinkButton';
+    
+    # link button specific fields
+    my $uri = $params{'uri'} || undef;
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # create link button
+    my $link_button;
+    if (defined($uri)) {
+        $link_button = Gtk2::LinkButton->new($uri, $object->{title});
+    } else {
+        $self->internal_die($object, "No Uri defined! Exiting.");
+    }
+
+    # set relief to none
+    $link_button->set_relief ('none');
+    
+    # add widget reference to widget object
+    $object->{ref} = $link_button;
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the button
+    $self->add_to_container($object->{name});
+
+    $link_button->show;
 }
 
 
@@ -1847,7 +1906,7 @@ sub get_tooltip($@) {
     my $object = $self->get_object($name);
     my $type = $object->{type};
     
-	unless($type =~ /^(Menubar|Notebook$|Menu$)/) {
+	unless($type =~ /^(Menubar|Notebook$|Menu$|LinkButton)/) {
         return $object->{tip};
 	} else {
         $self->show_error($object, "\"$type\" hasn't a tooltip!");
@@ -1897,7 +1956,7 @@ sub get_pos($$) {
 
 
 # ---------------------------------------------------------------------
-# get active state of Check- and RadioButtons
+# get active state of Check- and RadioButtons. Also from GtkSpinner
 # is_active(<name>)
 # get state whether a given value/string is current active in a combobox
 # is_active(<name>, <value>)
@@ -1972,6 +2031,11 @@ sub get_value($@) {
         if    ($key eq 'active') {$value = $object->{ref}->is_active();}
     }
     
+	elsif ($object->{type} eq 'LinkButton') {
+	    # get uri
+	    if    ($key eq 'uri') {$value = $object->{ref}->get_uri();}
+	}
+	
 	elsif ($object->{type} eq 'Label') {
 	    # line wrap
 	    if    ($key eq 'wrapped') {$value = $object->{ref}->get_line_wrap();}
@@ -2458,6 +2522,13 @@ sub set_values($@) {
     	}
     }
 	
+    if ($object->{type} eq 'LinkButton') {
+    	if (defined($params{'uri'})) {
+	        $object->{ref}->set_uri($params{'uri'});
+	        delete $params{'uri'};
+    	}
+    }
+	
 	if ($object->{type} eq 'Label') {
     	if (defined($params{'wrapped'})) {
 	        $object->{ref}->set_line_wrap($params{'wrapped'});
@@ -2878,6 +2949,7 @@ sub remove_nb_page($@) {
 	return 1;
 }
 
+
 # ---------------------------------------------------------------------
 # set group of a radio button/menu group
 # ---------------------------------------------------------------------
@@ -3000,25 +3072,32 @@ $win-E<gt>add_menu(Name =E<gt> `menu_edit', Title =E<gt> `_Edit', Menubar =E<gt>
 # menu tearoff
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_toff', Type =E<gt> `tearoff',
                         Menu =E<gt> `menu_edit', Tip =E<gt> `This is a tearoff');
+
 # menu item Save
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_save', Icon =E<gt> `gtk-save',
                         Menu =E<gt> `menu_edit', Tip =E<gt> `This is the Save entry');
+
 # separator
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_sep1', Type =E<gt> `separator', Menu =E<gt> `menu_edit');
+
 # icon
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_icon', Title =E<gt> `Burger',
                         Icon =E<gt> `./burger.png', Menu =E<gt> `menu_edit', Tip =E<gt> `This is the Burger');
+
 # check menu
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_check', Type =E<gt> `check',
                         Title =E<gt> `Check em', Menu =E<gt> `menu_edit',
-Tip =E<gt> `This is Check menu', Active =E<gt> 1);
+                        Tip =E<gt> `This is Check menu', Active =E<gt> 1);
+
 # radio menu
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio1', Type =E<gt> `radio',
                         Title =E<gt> `First', Menu =E<gt> `menu_edit',
                         Tip =E<gt> `First radio', Group =E<gt> `Yeah', Active =E<gt> 1);
+
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio2', Type =E<gt> `radio',
                         Title =E<gt> `Second', Menu =E<gt> `menu_edit',
                         Tip =E<gt> `Second radio', Group =E<gt> `Yeah');
+
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio3', Type =E<gt> `radio',
                         Title =E<gt> `_Third', Menu =E<gt> `menu_edit',
                         Tip =E<gt> `Third radio', Group =E<gt> `Yeah');
@@ -3027,6 +3106,7 @@ $win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio3', Type =E<gt> `radio',
 # menu Help
 $win-E<gt>add_menu( Name =E<gt> `menu_help', Title =E<gt> `_Help',
                     Justify =E<gt> `right', Menubar =E<gt> `menubar1');
+
 # menu item About
 $win-E<gt>add_menu_item(Name =E<gt> `menu_item_about', Icon =E<gt> `gtk-help',
                         Menu =E<gt> `menu_help', Tip =E<gt> `This is the About dialog',
@@ -3120,7 +3200,7 @@ image area.
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -3346,7 +3426,7 @@ widget.
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -3399,6 +3479,105 @@ Available for the button object:
 
 For more detailed information see section B<COMMON> B<FUNCTIONS>.
 
+
+
+=head1 GtkLinkButton
+
+Create buttons bound to a URL.
+
+=head2 B<add_button()>
+
+Creates a new GtkLinkButton widget.
+
+I<Parameters>
+
+B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
+    Name of the link button. Must be a unique name.
+
+B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
+    Title of the link button.
+
+B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
+    x- and y-position in the window/frame/page.
+
+B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
+    I<Optional>. Size of the link button.
+
+B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
+    Name of the frame/page where widget is located. Must be unique.
+
+B<Uri> B<=E<gt>> B<"E<lt>uri-textE<gt>">
+    A valid URI. It is the tooltip as well and will be shown while 
+hovering over the widget.
+
+B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
+    I<Optional>. Function reference/sub. Can be set later with
+    B<add_signal_handler>. If data is used it have to be set as an array.
+
+B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
+    I<Optional>. Signal/event. Only in conjunction with I<Func>.
+
+B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
+    I<Optional>. Set widget active/inactive. Default: 1 (active).
+
+I<Returns:> None.
+
+I<Example:>
+    $win-E<gt>add_link_button(Name =E<gt> `linkButton',
+                              Pos =E<gt> [10, 45],
+                              Title =E<gt> "To SimpleGtk2 site",
+                              Uri =E<gt> `https://github.com/ThomasFunk/SimpleGtk2',
+                              Frame =E<gt> `frame2');
+    $win-E<gt>add_signal_handler('closeButton', `clicked',
+                                [\&openPage, $win-E<gt>get_value('linkButton', 'Uri')]);
+
+=head2 B<get_value()>
+
+state = B<get_value(E<lt>nameE<gt>,> B<"Uri")>
+
+Returns the current uri of the link button I<name>.
+
+=head2 B<set_value()>
+
+B<set_value(E<lt>nameE<gt>,> B<"Uri"> B<=E<gt>> B<"E<lt>uri-textE<gt>")>
+
+Sets a new uri on the link button I<name>.
+
+=head2 B<more_functions()>
+
+Available for the link button object:
+
+
+=over 3
+
+=item *   B<hide_widget(E<lt>nameE<gt>)>
+
+=item *   B<show_widget(E<lt>nameE<gt>)>
+
+=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
+
+=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
+
+=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
+
+=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
+
+=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
+
+=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
+
+=item *   string = B<get_title(E<lt>nameE<gt>)>
+
+=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
+
+=back
+
+For more detailed information see section B<COMMON> B<FUNCTIONS>.
+
+
+
+
+
 =head1 GtkCheckButton
 
 Create widgets with a discrete toggle button.
@@ -3431,7 +3610,7 @@ widget.
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -3447,7 +3626,7 @@ I<Example:>
                                Title =E<gt> `Check button',
                                Tip =E<gt> `This is a checkbox',
                                Sig =E<gt> `toggled',
-                               Func =E<gt> \&DeleteFile);
+                               Func =E<gt> []\&DeleteFile, 'bla.txt']);
 
 =head2 B<is_active()>
 
@@ -3536,7 +3715,7 @@ widget.
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -3659,7 +3838,7 @@ widget.
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -3780,7 +3959,7 @@ B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -3968,7 +4147,7 @@ B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -4152,7 +4331,7 @@ widget.
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -4333,7 +4512,7 @@ widget.
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -4624,7 +4803,7 @@ set to 1! Default: 0
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
@@ -5087,7 +5266,7 @@ B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
 
 B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
     I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>.
+    B<add_signal_handler>. If data is used it have to be set as an array.
 
 B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
     I<Optional>. Signal/event. Only in conjunction with I<Func>.
