@@ -110,12 +110,17 @@ With SimpleGtk2:
     use SimpleGtk2;
 
     # toplevel window
-    my $window = SimpleGtk2->new_window(Type => 'toplevel', Name => 'main', Title => 'Hello World');
-    $window->add_signal_handler('main', 'delete_event', sub { Gtk2->main_quit; });
+    my $window = SimpleGtk2->new_window(Type => 'toplevel', 
+                                        Name => 'main', 
+                                        Title => 'Hello World');
+    $window->add_signal_handler('main', 'delete_event', 
+                                        sub { Gtk2->main_quit; });
 
     # button
-    $window->add_button(Name => 'button', Pos => [20, 40], Title => "Action", 
-                        Sig => 'clicked', Func => sub {print("Hello Gtk2-Perl\n");});
+    $window->add_button(Name => 'button', Pos => [20, 40], 
+                        Title => "Action", Sig => 'clicked', 
+                        Func => sub {print("Hello Gtk2-Perl\n");});
+    # show window
     $window->show_all();
 
 
