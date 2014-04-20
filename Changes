@@ -13,3 +13,10 @@ Revision history for Perl extension SimpleGtk2.
         - GtkImage, GtkNotebook, GtkNotebookPage, GtkSlider, GtkScrollbar
         - GtkWindow (toplevel)
     - add GPL header to SimpleGtk2.pm.
+
+0.56  Sun Apr 20 2014
+    - add GtkLinkButton with all needed functions and its documentation.
+    - fix formating in displaying source example in the documentation.
+    - fix bug in creation of signal handler via add_* functions because data
+      was unaccounted.
+    - update documentation about this.

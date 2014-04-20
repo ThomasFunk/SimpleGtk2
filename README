@@ -1,13 +1,14 @@
-SimpleGtk2 version 0.55
+SimpleGtk2 version 0.56
 =======================
 
-SimpleGtk2 is a wrapper around Gtk2 to allow RAD (Rapid Application 
+SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
 Development). It is based on GtkFixed container which allows creating 
 widgets with a minimal effort.
 
-The most needed widgets are implemented with the common needed functions.
+The most needed widgets are implemented with its common functions.
 
-But it is also possible to use the other functions provided by Perl-Gtk2.
+But it is also possible to use the original functions provided by 
+Perl-Gtk2.
 
 The following widgets are implemented:
 
@@ -24,13 +25,12 @@ Display Widgets
     - GtkProgressBar (planned)
     - GtkStatusbar (planned)
     - GtkStatusIcon (perhaps)
-    - GtkSpinner (perhaps)
     
 Buttons and Toggles
     - GtkButton
     - GtkCheckButton
     - GtkRadioButton
-    - GtkLinkButton (planned)
+    - GtkLinkButton
     
 Numeric/Text Data Entry
     - GtkEntry
