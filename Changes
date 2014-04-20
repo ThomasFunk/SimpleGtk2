@@ -1,0 +1,15 @@
+Revision history for Perl extension SimpleGtk2.
+
+0.01  Sun Apr 20 13:16:08 2014
+	- original version; created by h2xs 1.23 with options
+		-AX -b 5.4.0 -n SimpleGtk2
+
+0.55  Sun Apr 20 2014
+    - add available functions and dokumentation to SimpleGtk2.pm.
+      Now the following widgets with their functions are present:
+        - GtkButton, GtkCheckButton, GtkRadioButton, GtkSpinButton
+        - GtkLabel, GtkFrame, GtkEntry, GtkComboBox, GtkTextView
+        - GtkMenuBar, GtkMenu, GtkMenuItem (separator, tearoff, radio, check, standard)
+        - GtkImage, GtkNotebook, GtkNotebookPage, GtkSlider, GtkScrollbar
+        - GtkWindow (toplevel)
+    - add GPL header to SimpleGtk2.pm.

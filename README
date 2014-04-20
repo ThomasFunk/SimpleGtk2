@@ -1,0 +1,156 @@
+SimpleGtk2 version 0.55
+=======================
+
+SimpleGtk2 is a wrapper around Gtk2 to allow RAD (Rapid Application 
+Development). It is based on GtkFixed container which allows creating 
+widgets with a minimal effort.
+
+The most needed widgets are implemented with the common needed functions.
+
+But it is also possible to use the other functions provided by Perl-Gtk2.
+
+The following widgets are implemented:
+
+Windows
+    - GtkWindow (toplevel)
+    - GtkDialog (planned)
+    - GtkMessageDialog (planned)
+    - GtkAboutDialog (planned)
+    - GtkAssistant (planned)
+
+Display Widgets
+    - GtkImage
+    - GtkLabel
+    - GtkProgressBar (planned)
+    - GtkStatusbar (planned)
+    - GtkStatusIcon (perhaps)
+    - GtkSpinner (perhaps)
+    
+Buttons and Toggles
+    - GtkButton
+    - GtkCheckButton
+    - GtkRadioButton
+    - GtkLinkButton (planned)
+    
+Numeric/Text Data Entry
+    - GtkEntry
+    - GtkSlider (GtkHScale & GtkVScale)
+    - GtkSpinButton 
+
+Multiline Text Editor
+    - GtkTextView
+
+Tree, List and Icon Grid Widgets
+    - GtkTreeView (planned)
+    - GtkListView (planned)
+    
+Menus, Combo Box, Toolbar
+    - GtkComboBox
+    - GtkMenu
+    - GtkMenuBar
+    - GtkMenuItem
+        - GtkImageMenuItem
+        - GtkRadioMenuItem
+        - GtkCheckMenuItem
+        - GtkSeparatorMenuItem 
+        - GtkTearoffMenuItem
+    - GtkToolbar (planned)
+
+Selectors (File/Font/Color/Input Devices)
+    - GtkColorSelectionDialog (planned)
+    - GtkFileChooserDialog (planned)
+    - GtkFontSelectionDialog (planned)
+
+Layout Containers
+    - GtkNotebook
+    - GtkNotebookPage
+
+Ornaments
+    - GtkFrame
+
+Scrolling
+    - GtkScrollbar (GtkHScrollbar & GtkVScrollbar)
+
+Printing
+    - GtkPrintUnixDialog (perhaps)
+    - GtkPageSetupUnixDialog (perhaps)
+
+Miscellaneous
+    - GtkTooltip
+
+
+EXAMPLE
+
+The 'Hello World' example ;-)
+
+Original with Perl-Gtk2:
+
+    #! /usr/bin/perl -w
+    use strict;
+    use Gtk2 -init;
+
+    # toplevel window
+    my $window = Gtk2::Window->new ('toplevel');
+    $window->signal_connect (delete_event => sub { Gtk2->main_quit });
+
+    # button
+    my $button = Gtk2::Button->new ('Action');
+    $button->signal_connect (clicked => sub {print("Hello Gtk2-Perl\n");});
+
+    # add button and show window
+    $window->add ($button);
+    $window->show_all();
+
+    Gtk2->main;
+
+With SimpleGtk2:
+
+    #! /usr/bin/perl -w
+    use strict;
+    use SimpleGtk2;
+
+    # toplevel window
+    my $window = SimpleGtk2->new_window(Type => 'toplevel', Name => 'main', Title => 'Hello World');
+    $window->add_signal_handler('main', 'delete_event', sub { Gtk2->main_quit; });
+
+    # button
+    $window->add_button(Name => 'button', Pos => [20, 40], Title => "Action", 
+                        Sig => 'clicked', Func => sub {print("Hello Gtk2-Perl\n");});
+    $window->show_all();
+
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+  Test
+  Perl-Gtk2
+
+
+COPYRIGHT AND LICENCE
+
+This software stands under the GPL V2 or higher.
+
+Copyright (C) 2014 by Thomas Funk
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as GPL V2 or higher.
+
+
+BUGS
+
+This library is a work of progress and not finished yet. But if you want
+to play around and send me bug reports or suggestion for improvements
+you're welcome ^^
+
+Send it to <t.funk@web.de>
