@@ -20,3 +20,6 @@ Revision history for Perl extension SimpleGtk2.
     - fix bug in creation of signal handler via add_* functions because data
       was unaccounted.
     - update documentation about this.
+
+0.59  Fri Apr 25 2014
+    - add GtkMessageDialog with all needed functions and its documentation.

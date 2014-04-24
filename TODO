@@ -48,13 +48,13 @@ SwallowExec
 #VScrollBar: Display a vertical scrollbar.                           <= Gtk2::ScrolledWindow Vertical
 
 Needed/useful widgets
-Gtk2::LinkButton
+#Gtk2::LinkButton
 Gtk2::Dialog
 Gtk2::ColorSelectionDialog
 Gtk2::FileSelection
 Gtk2::FontSelectionDialog
 Gtk2::InputDialog
-Gtk2::MessageDialog
+#Gtk2::MessageDialog
 Gtk2::Viewport (???)
 Gtk2::Statusbar
 Gtk2::Notebook

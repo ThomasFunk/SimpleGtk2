@@ -1,4 +1,4 @@
-SimpleGtk2 version 0.56
+SimpleGtk2 version 0.59
 =======================
 
 SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
@@ -15,7 +15,7 @@ The following widgets are implemented:
 Windows
     - GtkWindow (toplevel)
     - GtkDialog (planned)
-    - GtkMessageDialog (planned)
+    - GtkMessageDialog
     - GtkAboutDialog (planned)
     - GtkAssistant (planned)
 
