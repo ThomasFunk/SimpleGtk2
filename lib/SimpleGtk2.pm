@@ -45,7 +45,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 	
 );
 
-$VERSION = '0.56';
+$VERSION = '0.59';
 
 ######################################################################
 # internal functions
@@ -96,7 +96,7 @@ sub _normalize {
 sub _extend {
     my $short = shift;
     
-    if ($short =~ /^(pos|tip|func|sig|sens|min|max|orient|valuepos|pixbuf|textbuf|scroll)/) {
+    if ($short =~ /^(pos|tip|func|sig|sens|min|max|orient|valuepos|pixbuf|textbuf|scroll|dtype|mtype)/) {
         if    ($short eq 'pos') {$short = 'position';}
         elsif ($short eq 'tip') {$short = 'tooltip';}
         elsif ($short eq 'func') {$short = 'function';}
@@ -116,6 +116,8 @@ sub _extend {
         elsif ($short eq 'prev') {$short = 'previous';}
         elsif ($short eq 'current') {$short = 'currentpage';}
         elsif ($short eq 'no2name') {$short = 'number2name';}
+        elsif ($short eq 'dtype') {$short = 'dialogtype';}
+        elsif ($short eq 'mtype') {$short = 'messagetype';}
     }
     return $short;
 }
@@ -1837,6 +1839,137 @@ sub add_nb_page($@) {
     
 }
 
+# ---------------------------------------------------------------------
+# add_msg_dialog(Name => <name>,                <= widget name - must be unique
+#               Modal => <0/1>,               	<= Optional. Default: modal (1)
+#               DType => "<dialog_type>",       <= default: 'none'. Else 'ok', 'close', 'cancel', 'yes-no' or 'ok-cancel'
+#               MTyp => "<message_type>",       <= 'info', 'warning', 'question', 'error' or 'other'
+#               Icon => <path|stock|name>       <= Optional. Icon instead of message type icon
+#               FuncNone => <none_function>     <= 'none' function
+#               FuncOk => <ok_function>         <= 'ok' function
+#               FuncClose => <close_function>   <= 'close' function
+#               FuncCancel => <cancel_function> <= 'cancel' function
+#               FuncYes => <yes_function>       <= 'yes' function
+#               FuncNo => <no_function>         <= 'no' function
+# ---------------------------------------------------------------------
+sub add_msg_dialog($@) {
+    my $self = shift;
+    my %params = _normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'MessageDialog';
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # message dialog specific fields
+    $object->{modal} = defined($params{'modal'}) ? $params{'modal'} : 1;
+    $object->{dialogtype} = $params{'dialogtype'} || 'none';
+    $object->{messagetype} = $params{'messagetype'};
+    $object->{icon} = $params{'icon'} || undef;
+    $object->{func1} = undef;
+    $object->{func2} = undef;
+
+    # check assigned functions
+    if ($object->{dialogtype} eq 'none') {
+    	$object->{func1} = $params{'funcnone'};
+    }
+    elsif ($object->{dialogtype} eq 'ok') {
+    	$object->{func1} = $params{'funcok'};
+    }
+    elsif ($object->{dialogtype} eq 'close') {
+    	$object->{func1} = $params{'funcclose'};
+    }
+    elsif ($object->{dialogtype} eq 'cancel') {
+    	$object->{func1} = $params{'funccancel'};
+    }
+    elsif ($object->{dialogtype} eq 'yes-no') {
+	    $object->{func1} = $params{'funcyes'};
+	    $object->{func2} = $params{'funcno'};
+    }
+    elsif ($object->{dialogtype} eq 'ok-cancel') {
+	    $object->{func1} = $params{'funcok'};
+	    $object->{func2} = $params{'funccancel'};
+    }
+    
+    # check if func1 is undef anyway
+    unless (defined($object->{func1})) {
+        $self->show_error($object, "func1 is unset! Have to be set!");
+    }
+    
+}
+
+# ---------------------------------------------------------------------
+# show_msg(<name>, "<message_text1>", "<message_text2>")
+# returns 0 or 1
+# ---------------------------------------------------------------------
+sub show_msg_dialog($@) {
+    my $self = shift;
+    my ($name, $msg1, $msg2) = @_;
+    
+    # get object
+    my $object = $self->get_object($name);
+    
+    # initialize message box
+    my $msg_box = Gtk2::MessageDialog->new_with_markup($self->{window},
+                                            'destroy-with-parent',
+                                            $object->{messagetype},
+                                            $object->{dialogtype},
+                                            sprintf "$msg1");
+    
+    # if a second text is set
+    if (defined($msg2)) {
+        $msg_box->format_secondary_markup($msg2);
+    }
+    
+    # if another icon is suggested set it
+    if (defined($object->{icon})) {
+        my $icon = $object->{icon};
+        my $image;
+        # stock icon?
+        if ($icon =~ /^gtk-/) {
+            $image = Gtk2::Image->new_from_stock($icon, 'dialog');
+        }
+        # path or theme icon name?
+        elsif (-e $icon) {
+            $image = Gtk2::Image->new_from_file($icon);
+        } 
+        else {
+            $image = Gtk2::Image->new_from_icon_name($icon, 'dialog');
+        }
+        $msg_box->set_image($image);
+    }        
+    
+    # modal or not ... that's the question ^^
+    if ($object->{modal}) {
+        my $response = $msg_box->run();
+        if ($response =~ /^(yes|ok|close|none)/ or
+            $response eq 'cancel' and $object->{dialogtype} eq 'cancel') {
+            $object->{func1}->();
+        } else {
+            if (defined($object->{func2})) {
+                $object->{func2}->();
+            } 
+        }
+        $msg_box->destroy();
+    } else {
+        # react whenever the user responds.
+        $msg_box->signal_connect(response => sub {
+            my ($self, $response) = @_;
+            if ($response =~ /^(yes|ok|close|none)/ or
+                $response eq 'cancel' and $object->{dialogtype} eq 'cancel') {
+                $object->{func1}->();
+            } else {
+                if (defined($object->{func2})) {
+                    $object->{func2}->();
+                } 
+            }
+            $msg_box->destroy();
+        });
+        $msg_box->show_all();
+    }  
+    
+}
+
 
 # ---------------------------------------------------------------------
 # add_list(	Name => <name>,                     <= widget name - must be unique
@@ -2893,7 +3026,7 @@ sub set_textview($@) {
 # Sets a new group on the radio button _<name>_. 
 # It can be used an existing group object or group name.
 # ---------------------------------------------------------------------
-# TODO: set_group not implemented yet.
+# TODO: how to set group? a single widget, all of an old group or what?
 sub set_group($@) {
     my $self = shift;
     my $hme = @_;
@@ -3164,6 +3297,91 @@ I<Example:>
                                          Title =E<gt> `testem-all',
                                          Size =E<gt> [400, 400],
                                          ThemeIcon =E<gt> `emblem-dropbox-syncing');
+
+=head1 B<Message> B<Dialog>
+
+Presents a dialog with an image representing the type of message
+(Error, Question, etc.) alongside some message text.
+
+=head2 B<add_msg_dialog()>
+
+Creates a new GtkMessageDialog object.
+
+I<Parameters:>
+
+B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
+    Name of the message dialog. Must be a unique name.
+
+B<Modal> B<=E<gt>> B<E<lt>0/1E<gt>>
+    I<Optional>. Sets the dialog modal (default) or nonmodal (1).
+
+B<DType|DialogType> B<=E<gt>> B<"E<lt>dialog_typeE<gt>">
+    Prebuilt sets of buttons. Default: I<none>. Else I<okE<gt>, I<closeE<gt>,
+I<cancelE<gt>, I<yes-no> or I<ok-cancel>.
+
+B<MTyp|MessageType> B<=E<gt>> B<"E<lt>message_typeE<gt>">
+    The type of message icon being displayed: I<infoE<gt>, I<warningE<gt>,
+I<questionE<gt>, I<error> or I<other>.
+
+B<Icon> B<=E<gt>> B<"E<lt>path|stock|nameE<gt>">
+    I<Optional>. Path of an icon, stock id or icon name as message
+icon being displayed.
+
+B<FuncNone> B<=E<gt>> B<"E<lt>none_functionE<gt>">
+    Function being used for message type I<none>.
+
+B<FuncOk> B<=E<gt>> B<"E<lt>ok_functionE<gt>">
+    Function being used for message type I<ok>.
+
+B<FuncClose> B<=E<gt>> B<"E<lt>close_functionE<gt>">
+    Function being used for I<close> button.
+
+B<FuncCancel> B<=E<gt>> B<"E<lt>cancel_functionE<gt>">
+    Function being used for I<cancel> button.
+
+B<FuncYes> B<=E<gt>> B<"E<lt>yes_functionE<gt>">
+    Function being used for I<yes> button.
+
+B<FuncNo> B<=E<gt>> B<"E<lt>no_functionE<gt>">
+    Function being used for I<no> button.
+
+I<Returns:> None.
+
+I<Example:>
+    $win-E<gt>add_msg_dialog(Name =E<gt> `diag',
+                        DType =E<gt> `ok',
+                        MType =E<gt> `info',
+                        FuncOk =E<gt> sub{print "ok\n"},
+                        Modal =E<gt> 0,
+                        Icon =E<gt> `gtk-quit');
+
+=head2 B<show_msg_dialog()>
+
+Shows a created GtkMessageDialog.
+
+B<show_msg_dialog(E<lt>nameE<gt>,> B<"E<lt>message1E<gt>",> B<"E<lt>message2E<gt>")>
+
+I<Parameters:>
+
+B<"E<lt>nameE<gt>">
+    Name of the message dialog. Must be a unique name.
+
+B<"E<lt>message1E<gt>">
+    Sets the first dialog message. It can be normal text or Pango
+markup string.
+
+B<"E<lt>message2E<gt>">
+    I<Optional>. Sets the second dialog message. It can be normal text
+or Pango markup string.
+
+I<Returns:> None.
+
+I<Example:>
+    # Button click shows Message dialog
+    $win-E<gt>add_button(Name =E<gt> `Button', Pos =E<gt> [60, 30], Size =E<gt> [80, 40], Title =E<gt> "_Show");
+    my $FirstMsg = "E<lt>span foreground=\"blue\" size=\"x-large\">Message Type</spanE<gt>";
+    my $SecondMsg = "E<lt>span foreground='red' size=\"small\" style ='italic'>Info box.</spanE<gt>";
+    $win-E<gt>add_signal_handler('Button', `clicked', sub{$win-E<gt>show_msg_dialog('diag', $FirstMsg, $SecondMsg);});
 
 =head1 GtkImage
 
