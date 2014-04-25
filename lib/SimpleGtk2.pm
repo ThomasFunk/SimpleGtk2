@@ -45,7 +45,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 	
 );
 
-$VERSION = '0.59';
+$VERSION = '0.60';
 
 ######################################################################
 # internal functions
@@ -96,7 +96,7 @@ sub _normalize {
 sub _extend {
     my $short = shift;
     
-    if ($short =~ /^(pos|tip|func|sig|sens|min|max|orient|valuepos|pixbuf|textbuf|scroll|dtype|mtype)/) {
+    if ($short =~ /^(pos|tip|func|sig|sens|min|max|orient|valuepos|pixbuf|textbuf|scroll|dtype|mtype|rfunc)/) {
         if    ($short eq 'pos') {$short = 'position';}
         elsif ($short eq 'tip') {$short = 'tooltip';}
         elsif ($short eq 'func') {$short = 'function';}
@@ -118,6 +118,7 @@ sub _extend {
         elsif ($short eq 'no2name') {$short = 'number2name';}
         elsif ($short eq 'dtype') {$short = 'dialogtype';}
         elsif ($short eq 'mtype') {$short = 'messagetype';}
+        elsif ($short eq 'rfunc') {$short = 'responsefunction';}
     }
     return $short;
 }
@@ -173,8 +174,6 @@ sub _set_commons($@) {
         }
     }
     
-    
-    my $function = $params{'function'} || undef;
     my $signal = $params{'signal'} || undef;
     my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
     
@@ -1845,12 +1844,7 @@ sub add_nb_page($@) {
 #               DType => "<dialog_type>",       <= default: 'none'. Else 'ok', 'close', 'cancel', 'yes-no' or 'ok-cancel'
 #               MTyp => "<message_type>",       <= 'info', 'warning', 'question', 'error' or 'other'
 #               Icon => <path|stock|name>       <= Optional. Icon instead of message type icon
-#               FuncNone => <none_function>     <= 'none' function
-#               FuncOk => <ok_function>         <= 'ok' function
-#               FuncClose => <close_function>   <= 'close' function
-#               FuncCancel => <cancel_function> <= 'cancel' function
-#               FuncYes => <yes_function>       <= 'yes' function
-#               FuncNo => <no_function>         <= 'no' function
+#               RFunc => <response_function>    <= Have to be set if nonmodal (Modal => 0) is chosen
 # ---------------------------------------------------------------------
 sub add_msg_dialog($@) {
     my $self = shift;
@@ -1866,41 +1860,15 @@ sub add_msg_dialog($@) {
     $object->{dialogtype} = $params{'dialogtype'} || 'none';
     $object->{messagetype} = $params{'messagetype'};
     $object->{icon} = $params{'icon'} || undef;
-    $object->{func1} = undef;
-    $object->{func2} = undef;
-
-    # check assigned functions
-    if ($object->{dialogtype} eq 'none') {
-    	$object->{func1} = $params{'funcnone'};
+    unless ($object->{modal}) {
+        $object->{rfunc} = $params{'responsefunction'};
+    } else {
+        $object->{rfunc} = undef;
     }
-    elsif ($object->{dialogtype} eq 'ok') {
-    	$object->{func1} = $params{'funcok'};
-    }
-    elsif ($object->{dialogtype} eq 'close') {
-    	$object->{func1} = $params{'funcclose'};
-    }
-    elsif ($object->{dialogtype} eq 'cancel') {
-    	$object->{func1} = $params{'funccancel'};
-    }
-    elsif ($object->{dialogtype} eq 'yes-no') {
-	    $object->{func1} = $params{'funcyes'};
-	    $object->{func2} = $params{'funcno'};
-    }
-    elsif ($object->{dialogtype} eq 'ok-cancel') {
-	    $object->{func1} = $params{'funcok'};
-	    $object->{func2} = $params{'funccancel'};
-    }
-    
-    # check if func1 is undef anyway
-    unless (defined($object->{func1})) {
-        $self->show_error($object, "func1 is unset! Have to be set!");
-    }
-    
 }
 
 # ---------------------------------------------------------------------
 # show_msg(<name>, "<message_text1>", "<message_text2>")
-# returns 0 or 1
 # ---------------------------------------------------------------------
 sub show_msg_dialog($@) {
     my $self = shift;
@@ -1910,8 +1878,9 @@ sub show_msg_dialog($@) {
     my $object = $self->get_object($name);
     
     # initialize message box
+    my $flags = $object->{modal} ? [qw/modal destroy-with-parent/] : 'destroy-with-parent';
     my $msg_box = Gtk2::MessageDialog->new_with_markup($self->{window},
-                                            'destroy-with-parent',
+                                            $flags,
                                             $object->{messagetype},
                                             $object->{dialogtype},
                                             sprintf "$msg1");
@@ -1937,34 +1906,21 @@ sub show_msg_dialog($@) {
             $image = Gtk2::Image->new_from_icon_name($icon, 'dialog');
         }
         $msg_box->set_image($image);
+        $image->show();
     }        
     
     # modal or not ... that's the question ^^
     if ($object->{modal}) {
         my $response = $msg_box->run();
-        if ($response =~ /^(yes|ok|close|none)/ or
-            $response eq 'cancel' and $object->{dialogtype} eq 'cancel') {
-            $object->{func1}->();
-        } else {
-            if (defined($object->{func2})) {
-                $object->{func2}->();
-            } 
-        }
         $msg_box->destroy();
+        return $response;
     } else {
         # react whenever the user responds.
         $msg_box->signal_connect(response => sub {
-            my ($self, $response) = @_;
-            if ($response =~ /^(yes|ok|close|none)/ or
-                $response eq 'cancel' and $object->{dialogtype} eq 'cancel') {
-                $object->{func1}->();
-            } else {
-                if (defined($object->{func2})) {
-                    $object->{func2}->();
-                } 
-            }
-            $msg_box->destroy();
-        });
+            my ($self, $response, $object) = @_;
+            $self->destroy();
+            $object->{rfunc}->($response);
+        }, $object);
         $msg_box->show_all();
     }  
     
@@ -3188,64 +3144,54 @@ SimpleGtk2 - Rapid Application Development Library for Gtk+ version 2
 
 =head1 SYNOPSIS
 
-#!/usr/bin/perl -w
-
-use SimpleGtk2;
-
-# Toplevel window
-my $win = SimpleGtk2-E<gt>new_window(Type =E<gt> `toplevel', Name =E<gt> `mainWindow',
-                                     Title =E<gt> `testem-all', Size =E<gt> [400, 400]);
-
-# menu bar
-$win-E<gt>add_menu_bar(Name =E<gt> `menubar1', Pos =E<gt> [0,0]);
-
-# menu Edit
-$win-E<gt>add_menu(Name =E<gt> `menu_edit', Title =E<gt> `_Edit', Menubar =E<gt> `menubar1');
-
-# menu tearoff
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_toff', Type =E<gt> `tearoff',
-                        Menu =E<gt> `menu_edit', Tip =E<gt> `This is a tearoff');
-
-# menu item Save
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_save', Icon =E<gt> `gtk-save',
-                        Menu =E<gt> `menu_edit', Tip =E<gt> `This is the Save entry');
-
-# separator
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_sep1', Type =E<gt> `separator', Menu =E<gt> `menu_edit');
-
-# icon
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_icon', Title =E<gt> `Burger',
-                        Icon =E<gt> `./burger.png', Menu =E<gt> `menu_edit', Tip =E<gt> `This is the Burger');
-
-# check menu
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_check', Type =E<gt> `check',
-                        Title =E<gt> `Check em', Menu =E<gt> `menu_edit',
-                        Tip =E<gt> `This is Check menu', Active =E<gt> 1);
-
-# radio menu
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio1', Type =E<gt> `radio',
-                        Title =E<gt> `First', Menu =E<gt> `menu_edit',
-                        Tip =E<gt> `First radio', Group =E<gt> `Yeah', Active =E<gt> 1);
-
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio2', Type =E<gt> `radio',
-                        Title =E<gt> `Second', Menu =E<gt> `menu_edit',
-                        Tip =E<gt> `Second radio', Group =E<gt> `Yeah');
-
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio3', Type =E<gt> `radio',
-                        Title =E<gt> `_Third', Menu =E<gt> `menu_edit',
-                        Tip =E<gt> `Third radio', Group =E<gt> `Yeah');
-
-
-# menu Help
-$win-E<gt>add_menu( Name =E<gt> `menu_help', Title =E<gt> `_Help',
-                    Justify =E<gt> `right', Menubar =E<gt> `menubar1');
-
-# menu item About
-$win-E<gt>add_menu_item(Name =E<gt> `menu_item_about', Icon =E<gt> `gtk-help',
-                        Menu =E<gt> `menu_help', Tip =E<gt> `This is the About dialog',
-                        Sens =E<gt> 0);
-
-$win-E<gt>show_all();
+    use SimpleGtk2;
+    
+    # Toplevel window
+    my $win = SimpleGtk2->new_window(Type => 'toplevel', Name => 'mainWindow', 
+                                    Title => 'testem-all', Size => [400, 400]);
+    
+    # menu bar
+    $win->add_menu_bar(Name => 'menubar1', Pos => [0,0]);
+    
+    # menu Edit
+    $win->add_menu(Name => 'menu_edit', Title => '_Edit', Menubar => 'menubar1');
+    
+    # menu tearoff
+    $win->add_menu_item(Name => 'menu_item_toff', Type => 'tearoff', 
+                        Menu => 'menu_edit', Tip => 'This is a tearoff');
+    # menu item Save
+    $win->add_menu_item(Name => 'menu_item_save', Icon => 'gtk-save', 
+                        Menu => 'menu_edit', Tip => 'This is the Save entry');
+    # separator
+    $win->add_menu_item(Name => 'menu_item_sep1', Type => 'separator', Menu => 'menu_edit');
+    # icon
+    $win->add_menu_item(Name => 'menu_item_icon', Title => 'Burger', 
+                        Icon => './burger.png', Menu => 'menu_edit', Tip => 'This is the Burger');
+    # check menu
+    $win->add_menu_item(Name => 'menu_item_check', Type => 'check', 
+                        Title => 'Check em', Menu => 'menu_edit', 
+                        Tip => 'This is Check menu', Active => 1);
+    # radio menu
+    $win->add_menu_item(Name => 'menu_item_radio1', Type => 'radio', 
+                        Title => 'First', Menu => 'menu_edit', 
+                        Tip => 'First radio', Group => 'Yeah', Active => 1);
+    $win->add_menu_item(Name => 'menu_item_radio2', Type => 'radio', 
+                        Title => 'Second', Menu => 'menu_edit', 
+                        Tip => 'Second radio', Group => 'Yeah');
+    $win->add_menu_item(Name => 'menu_item_radio3', Type => 'radio', 
+                        Title => '_Third', Menu => 'menu_edit', 
+                        Tip => 'Third radio', Group => 'Yeah');
+    
+    
+    # menu Help
+    $win->add_menu(Name => 'menu_help', Title => '_Help', 
+                   Justify => 'right', Menubar => 'menubar1');
+    # menu item About
+    $win->add_menu_item(Name => 'menu_item_about', Icon => 'gtk-help', 
+                        Menu => 'menu_help', Tip => 'This is the About dialog', 
+                        Sens => 0);
+    
+    $win->show_all();
 
 =head1 DESCRIPTION
 
@@ -3300,8 +3246,8 @@ I<Example:>
 
 =head1 B<Message> B<Dialog>
 
-Presents a dialog with an image representing the type of message
-(Error, Question, etc.) alongside some message text.
+A dialog with an image representing the type of message (Error,
+Question, etc.) alongside some message text.
 
 =head2 B<add_msg_dialog()>
 
@@ -3327,33 +3273,10 @@ B<Icon> B<=E<gt>> B<"E<lt>path|stock|nameE<gt>">
     I<Optional>. Path of an icon, stock id or icon name as message
 icon being displayed.
 
-B<FuncNone> B<=E<gt>> B<"E<lt>none_functionE<gt>">
-    Function being used for message type I<none>.
-
-B<FuncOk> B<=E<gt>> B<"E<lt>ok_functionE<gt>">
-    Function being used for message type I<ok>.
-
-B<FuncClose> B<=E<gt>> B<"E<lt>close_functionE<gt>">
-    Function being used for I<close> button.
-
-B<FuncCancel> B<=E<gt>> B<"E<lt>cancel_functionE<gt>">
-    Function being used for I<cancel> button.
-
-B<FuncYes> B<=E<gt>> B<"E<lt>yes_functionE<gt>">
-    Function being used for I<yes> button.
-
-B<FuncNo> B<=E<gt>> B<"E<lt>no_functionE<gt>">
-    Function being used for I<no> button.
+B<RFunc|ResponseFunction> B<=E<gt>> B<"E<lt>response_functionE<gt>">
+    Function being used for response evaluation.
 
 I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_msg_dialog(Name =E<gt> `diag',
-                        DType =E<gt> `ok',
-                        MType =E<gt> `info',
-                        FuncOk =E<gt> sub{print "ok\n"},
-                        Modal =E<gt> 0,
-                        Icon =E<gt> `gtk-quit');
 
 =head2 B<show_msg_dialog()>
 
@@ -3377,11 +3300,43 @@ or Pango markup string.
 I<Returns:> None.
 
 I<Example:>
-    # Button click shows Message dialog
-    $win-E<gt>add_button(Name =E<gt> `Button', Pos =E<gt> [60, 30], Size =E<gt> [80, 40], Title =E<gt> "_Show");
-    my $FirstMsg = "E<lt>span foreground=\"blue\" size=\"x-large\">Message Type</spanE<gt>";
-    my $SecondMsg = "E<lt>span foreground='red' size=\"small\" style ='italic'>Info box.</spanE<gt>";
-    $win-E<gt>add_signal_handler('Button', `clicked', sub{$win-E<gt>show_msg_dialog('diag', $FirstMsg, $SecondMsg);});
+    use SimpleGtk2;
+    
+    sub nonModal{
+        my $response = shift;
+        if ($response eq 'yes') {print "Yes\n";}
+        else {print "No\n";}
+    }
+    
+    sub Modal {
+        my $window = shift;
+        my $response = $window->show_msg_dialog('diag1', "Message Type", "Warning");
+        if ($response eq 'ok') {print "Ok\n";}
+        else {print "Cancel\n";}
+    }
+    
+    # Toplevel window
+    my $win = SimpleGtk2->new_window(Type => 'toplevel', Name => 'mainWindow', Title => 'Message Test', Size => [200, 100]);
+    
+    # Button 1 for modal message dialog
+    $win->add_button(Name => 'Button1', Pos => [60, 10], Size => [80, 40], Title => "_Modal");
+    $win->add_signal_handler('Button1', 'clicked', sub{\&Modal($win);});
+    
+    # Modal message dialog
+    $win->add_msg_dialog(Name => 'diag1', DType => 'ok-cancel', MType => 'warning', Icon => 'gtk-quit');
+    
+    # messages for non-modal message dialog
+    my $FirstMsg = "<span foreground=\"blue\" size=\"x-large\">Message Type</span>";
+    my $SecondMsg = "<span foreground='red' size=\"small\" style ='italic'>Info box.</span>";
+    
+    # Button 2 for non-modal message dialog
+    $win->add_button(Name => 'Button2', Pos => [60, 60], Size => [80, 40], Title => "_NonModal");
+    $win->add_signal_handler('Button2', 'clicked', sub{$win->show_msg_dialog('diag2', $FirstMsg, $SecondMsg);});
+    
+    # Non-modal message dialog
+    $win->add_msg_dialog(Name => 'diag2', DType => 'yes-no', MType => 'info', RFunc => \&nonModal, Modal => 0);
+    
+    $win->show_all();
 
 =head1 GtkImage
 
