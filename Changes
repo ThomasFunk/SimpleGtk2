@@ -23,3 +23,7 @@ Revision history for Perl extension SimpleGtk2.
 
 0.59  Fri Apr 25 2014
     - add GtkMessageDialog with all needed functions and its documentation.
+
+0.60  Fri Apr 25 2014
+    - rewrite GtkMessageDialog because it was too complicated.
+    - update pod documentation
