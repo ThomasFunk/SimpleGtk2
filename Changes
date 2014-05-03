@@ -32,3 +32,7 @@ Revision history for Perl extension SimpleGtk2.
     - remove Type parameter in new_window() because popup not supported.
     - add simple type of show_msg_dialog:
       show_msg_dialog(<dialog_type>, "<message_type>", "<message_text>")
+    - add some examples:
+      - menubar_simple.pl
+      - msg_dialog_simple.pl
+      - notebook_simple.pl
