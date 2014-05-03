@@ -45,7 +45,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 	
 );
 
-$VERSION = '0.60';
+$VERSION = '0.61';
 
 ######################################################################
 # internal functions
@@ -215,8 +215,7 @@ sub _set_commons($@) {
 ######################################################################
 
 # ---------------------------------------------------------------------
-# new Window (  Type => <type>                  <= supported window types: toplevel, popup
-#               Name => '<name>'                <= must be unique
+# new Window (  Name => '<name>'                <= must be unique
 #               Title => '<window title>
 #               Size => [width, height],        <= Optional
 #               Fixed => <0/1>,                 <= Optional. Default: 0 (resizable)
@@ -242,7 +241,7 @@ sub new_window ($@) {
 	$self->{name} = $params{'name'};
 
     my $object = _new_widget(%params);
-    $object->{type} = $params{'type'};
+    $object->{type} = 'toplevel';
     $object->{fixed} = $params{'fixed'} || 0;
 
 	bless $self, $class;
@@ -1824,7 +1823,6 @@ sub add_nb_page($@) {
     my $notebook = $self->get_widget($object->{notebook});
     
     if (defined($pos_n)) {
-#        $notebook->insert_page($object->{ref}, $object->{title}, $pos_n);
         $notebook->insert_page($object->{ref}, undef, $pos_n);
     } else {
     	$notebook->append_page($object->{ref});
@@ -1868,49 +1866,83 @@ sub add_msg_dialog($@) {
 }
 
 # ---------------------------------------------------------------------
-# show_msg(<name>, "<message_text1>", "<message_text2>")
+# show_msg_dialog(<name>, "<message_text1>", "<message_text2>")
+# or a simple one
+# show_msg_dialog(<dialog_type>, "<message_type>", "<message_text>")
 # ---------------------------------------------------------------------
 sub show_msg_dialog($@) {
     my $self = shift;
     my ($name, $msg1, $msg2) = @_;
     
-    # get object
-    my $object = $self->get_object($name);
+    my $object = undef;
+    my $modal;
+    my $flags;
+    my $messagetype;
+    my $dialogtype;
+    my $color;
+    
+    # is it a simple message dialog?
+    if (exists($self->{objects}->{$name})) {
+        # get object
+        $object = $self->get_object($name);
+        
+        $flags = $object->{modal} ? [qw/modal destroy-with-parent/] : 'destroy-with-parent';
+        $modal = $object->{modal};
+        $dialogtype = $object->{dialogtype};
+        $messagetype = $object->{messagetype};
+        
+    } else {
+        $flags = [qw/modal destroy-with-parent/];
+        $modal = 1;
+        $dialogtype = $msg1;
+        $messagetype = $name;
+        #'info', 'warning', 'question', 'error'
+        my $sign;
+        if ($messagetype =~ /info|question/) {
+            $color = 'blue';
+            $sign = '.'
+        } else {
+            $color = 'red';
+            $sign = '!'
+        }
+        $msg1 = "<span foreground=\"$color\" size=\"x-large\">" . ucfirst($messagetype) . "$sign </span>"; 
+    }
     
     # initialize message box
-    my $flags = $object->{modal} ? [qw/modal destroy-with-parent/] : 'destroy-with-parent';
     my $msg_box = Gtk2::MessageDialog->new_with_markup($self->{window},
                                             $flags,
-                                            $object->{messagetype},
-                                            $object->{dialogtype},
+                                            $messagetype,
+                                            $dialogtype,
                                             sprintf "$msg1");
     
     # if a second text is set
     if (defined($msg2)) {
         $msg_box->format_secondary_markup($msg2);
     }
-    
-    # if another icon is suggested set it
-    if (defined($object->{icon})) {
-        my $icon = $object->{icon};
-        my $image;
-        # stock icon?
-        if ($icon =~ /^gtk-/) {
-            $image = Gtk2::Image->new_from_stock($icon, 'dialog');
-        }
-        # path or theme icon name?
-        elsif (-e $icon) {
-            $image = Gtk2::Image->new_from_file($icon);
-        } 
-        else {
-            $image = Gtk2::Image->new_from_icon_name($icon, 'dialog');
-        }
-        $msg_box->set_image($image);
-        $image->show();
-    }        
-    
+        
+    if (defined($object)) {
+        # if another icon is suggested set it
+        if (defined($object->{icon})) {
+            my $icon = $object->{icon};
+            my $image;
+            # stock icon?
+            if ($icon =~ /^gtk-/) {
+                $image = Gtk2::Image->new_from_stock($icon, 'dialog');
+            }
+            # path or theme icon name?
+            elsif (-e $icon) {
+                $image = Gtk2::Image->new_from_file($icon);
+            } 
+            else {
+                $image = Gtk2::Image->new_from_icon_name($icon, 'dialog');
+            }
+            $msg_box->set_image($image);
+            $image->show();
+        }        
+    }
+        
     # modal or not ... that's the question ^^
-    if ($object->{modal}) {
+    if ($modal) {
         my $response = $msg_box->run();
         $msg_box->destroy();
         return $response;
@@ -3274,15 +3306,32 @@ B<Icon> B<=E<gt>> B<"E<lt>path|stock|nameE<gt>">
 icon being displayed.
 
 B<RFunc|ResponseFunction> B<=E<gt>> B<"E<lt>response_functionE<gt>">
-    Function being used for response evaluation.
+    Function being used for response evaluation. Have to be set if 
+nonmodal (Modal => 0) is chosen.
 
 I<Returns:> None.
 
 =head2 B<show_msg_dialog()>
 
-Shows a created GtkMessageDialog.
+Shows a created GtkMessageDialog or a simple (modal) one.
 
-B<show_msg_dialog(E<lt>nameE<gt>,> B<"E<lt>message1E<gt>",> B<"E<lt>message2E<gt>")>
+B<Simple:>
+    B<show_msg_dialog("E<lt>message_typeE<gt>",> B<"E<lt>dialog_typeE<gt>",> B<"E<lt>message_textE<gt>")>
+
+I<Parameters:>
+
+B<"E<lt>message_typeE<gt>">
+    The type of message icon being displayed: I<info, warning, question, error.>
+
+B<"E<lt>dialog_typeE<gt>">
+    Prebuilt sets of buttons: I<ok, close, cancel, yes-no or ok-cancel.>
+
+B<"E<lt>message_textE<gt>">
+    Sets the dialog message. It can be normal text or Pango markup
+string.
+
+B<For> B<user> B<defined> B<dialog:>
+    B<show_msg_dialog("E<lt>nameE<gt>",> B<"E<lt>message1E<gt>",> B<"E<lt>message2E<gt>")>
 
 I<Parameters:>
 
@@ -3297,44 +3346,54 @@ B<"E<lt>message2E<gt>">
     I<Optional>. Sets the second dialog message. It can be normal text
 or Pango markup string.
 
-I<Returns:> None.
+I<Returns:> ok, close, cancel, yes, no - depending on the pressed button.
 
 I<Example:>
     use SimpleGtk2;
-    
+
     sub nonModal{
         my $response = shift;
-        if ($response eq 'yes') {print "Yes\n";}
+        if ($response eq `yes') {print "Yes\n";}
         else {print "No\n";}
     }
     
     sub Modal {
         my $window = shift;
         my $response = $window->show_msg_dialog('diag1', "Message Type", "Warning");
-        if ($response eq 'ok') {print "Ok\n";}
+        if ($response eq `ok') {print "Ok\n";}
         else {print "Cancel\n";}
     }
     
+    sub Simple {
+        my $window = shift;
+        my $response = $window->show_msg_dialog('warning', `yes-no', "This is a simple one");
+        print ucfirst($response) . "\n";
+    }
+
     # Toplevel window
-    my $win = SimpleGtk2->new_window(Type => 'toplevel', Name => 'mainWindow', Title => 'Message Test', Size => [200, 100]);
+    my $win = SimpleGtk2->new_window(Type => `toplevel', Name => `mainWindow', Title => `Message Test', Size => [200, 160]);
     
     # Button 1 for modal message dialog
-    $win->add_button(Name => 'Button1', Pos => [60, 10], Size => [80, 40], Title => "_Modal");
-    $win->add_signal_handler('Button1', 'clicked', sub{\&Modal($win);});
+    $win->add_button(Name => `Button1', Pos => [60, 10], Size => [80, 40], Title => "_Modal");
+    $win->add_signal_handler('Button1', `clicked', sub{\&Modal($win);});
     
     # Modal message dialog
-    $win->add_msg_dialog(Name => 'diag1', DType => 'ok-cancel', MType => 'warning', Icon => 'gtk-quit');
+    $win->add_msg_dialog(Name => `diag1', DType => `ok-cancel', MType => `warning', Icon => `gtk-quit');
     
     # messages for non-modal message dialog
-    my $FirstMsg = "<span foreground=\"blue\" size=\"x-large\">Message Type</span>";
-    my $SecondMsg = "<span foreground='red' size=\"small\" style ='italic'>Info box.</span>";
+    my $FirstMsg = "E<lt>span foreground=\"blue\" size=\"x-large\">Message Type</span>";
+    my $SecondMsg = "E<lt>span foreground='red' size=\"small\" style ='italic'>Info box.</span>";
     
     # Button 2 for non-modal message dialog
-    $win->add_button(Name => 'Button2', Pos => [60, 60], Size => [80, 40], Title => "_NonModal");
-    $win->add_signal_handler('Button2', 'clicked', sub{$win->show_msg_dialog('diag2', $FirstMsg, $SecondMsg);});
+    $win->add_button(Name => `Button2', Pos => [60, 60], Size => [80, 40], Title => "_NonModal");
+    $win->add_signal_handler('Button2', `clicked', sub{$win->show_msg_dialog('diag2', $FirstMsg, $SecondMsg);});
     
     # Non-modal message dialog
-    $win->add_msg_dialog(Name => 'diag2', DType => 'yes-no', MType => 'info', RFunc => \&nonModal, Modal => 0);
+    $win->add_msg_dialog(Name => `diag2', DType => `yes-no', MType => `info', RFunc => \&nonModal, Modal => 0);
+    
+    # Button 3 for a simple but modal message dialog
+    $win->add_button(Name => `Button3', Pos => [60, 110], Size => [80, 40], Title => "_Simple");
+    $win->add_signal_handler('Button3', `clicked', sub{\&Simple($win);});
     
     $win->show_all();
 
