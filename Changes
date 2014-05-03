@@ -27,3 +27,8 @@ Revision history for Perl extension SimpleGtk2.
 0.60  Fri Apr 25 2014
     - rewrite GtkMessageDialog because it was too complicated.
     - update pod documentation
+
+0.61  Sa May 03 2014
+    - remove Type parameter in new_window() because popup not supported.
+    - add simple type of show_msg_dialog:
+      show_msg_dialog(<dialog_type>, "<message_type>", "<message_text>")

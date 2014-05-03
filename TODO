@@ -57,7 +57,7 @@ Gtk2::InputDialog
 #Gtk2::MessageDialog
 Gtk2::Viewport (???)
 Gtk2::Statusbar
-Gtk2::Notebook
+#Gtk2::Notebook
 #Gtk2::TextView
 ## Gtk2::Toolbar - later ##
 Gtk2::ProgressBar
