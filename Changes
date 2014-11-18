@@ -1,8 +1,8 @@
 Revision history for Perl extension SimpleGtk2.
 
 0.01  Sun Apr 20 13:16:08 2014
-	- original version; created by h2xs 1.23 with options
-		-AX -b 5.4.0 -n SimpleGtk2
+    - original version; created by h2xs 1.23 with options
+        -AX -b 5.4.0 -n SimpleGtk2
 
 0.55  Sun Apr 20 2014
     - add available functions and dokumentation to SimpleGtk2.pm.
@@ -36,3 +36,30 @@ Revision history for Perl extension SimpleGtk2.
       - menubar_simple.pl
       - msg_dialog_simple.pl
       - notebook_simple.pl
+
+0.62  Tue Nov 18 2014
+    - add gettext support
+    - add size scaling - changing the font size change the size and position 
+      of the widgets automagically
+    - add displaying the version in the title of the main window without 
+      destroying the translation
+    - add an optional statusbar to the main window
+    - fix bug in _on_changed_update() that the reference and not the widget 
+      itself will be used
+    - update show_error() and show_message() to work correctly now and print
+      out understandable messages
+    - split show_all() to show(): show window with all widgets without run Gtk2->main
+      and show_and_run(): show window with all widgets anf start Gtk2->main
+      This is important if lib will be used in FVWM modules
+    - fix bug in add_signal_handler() and add_msg_dialog() so that all references 
+      can be used and not the main window only
+    - fix bug in get_object(): wrong usage of ref
+    - add exist_object(): checks if object xyz exist
+    - add possibility in add_tooltip() to wrap long tooltip text with '\'
+    - add filechooser_button and filechooser_dialog + needed functions
+    - add font_button and fontselection_dialog + needed functions
+    - change get_title($@) to get_title($$)
+    - fix bug in is_active() because get_active() is needed and provides '' on 
+      uncheck and not 0
+    - add error message to get_group()
+    - remove useless code in set_title()

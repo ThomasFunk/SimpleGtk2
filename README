@@ -1,4 +1,4 @@
-SimpleGtk2 version 0.59
+SimpleGtk2 version 0.62
 =======================
 
 SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
@@ -15,7 +15,7 @@ The following widgets are implemented:
 Windows
     - GtkWindow (toplevel)
     - GtkDialog (planned)
-    - GtkMessageDialog
+    - GtkMessageDialog (normal and simple)
     - GtkAboutDialog (planned)
     - GtkAssistant (planned)
 
@@ -31,6 +31,8 @@ Buttons and Toggles
     - GtkCheckButton
     - GtkRadioButton
     - GtkLinkButton
+    - GtkFontButton
+    - GtkFilechooserButton
     
 Numeric/Text Data Entry
     - GtkEntry
@@ -58,8 +60,8 @@ Menus, Combo Box, Toolbar
 
 Selectors (File/Font/Color/Input Devices)
     - GtkColorSelectionDialog (planned)
-    - GtkFileChooserDialog (planned)
-    - GtkFontSelectionDialog (planned)
+    - GtkFileChooserDialog (normal and simple)
+    - GtkFontSelectionDialog (normal and simple)
 
 Layout Containers
     - GtkNotebook
