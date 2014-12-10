@@ -50,7 +50,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $GETTEXT $LANGUAGE $LC
 	
 );
 
-$VERSION = '0.62';
+$VERSION = '0.63';
 $LANGUAGE = $ENV{LANG} || 'en_US.UTF-8';
 $CODESET = langinfo(CODESET());
 $GETTEXT = 0;
@@ -108,13 +108,22 @@ sub use_gettext {
 }
 
 # ---------------------------------------------------------------------
-# 
+# internal translation function
 # ---------------------------------------------------------------------
 sub _ {
-	my $text = shift;
-	return ($GETTEXT == 1 ? decode("utf-8", Locale::gettext::gettext($text)) : $text);
+    my $text = shift;
+    return ($GETTEXT == 1 ? decode("utf-8", Locale::gettext::gettext($text)) : $text);
 }
 
+# ---------------------------------------------------------------------
+# external translation function used to translate text part
+# ---------------------------------------------------------------------
+sub translate($$) {
+    my $self = shift;
+    my $text = shift;
+    $text =~ s/\R\h+//g;
+    return _($text);
+}
 # ---------------------------------------------------------------------
 # global widget object structure for window object list
 # ---------------------------------------------------------------------
@@ -270,7 +279,7 @@ sub _set_commons($@) {
     my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
     
     # set tooltip if needed
-    unless($type =~ /^(Menubar|Notebook|Menu$)/) {
+    unless($type =~ /^(Menubar|Notebook$|Menu$)/) {
         $self->add_tooltip($object->{name});
     }
     
@@ -291,10 +300,9 @@ sub _set_commons($@) {
                 # default size: 80x25 pixel on base 10 (scale factor = 1)
                 $object->{width} = $self->_scale(80);
                 $object->{height} = $self->_scale(25);
-            }
-            else {
+            } else {
                 if ($object->{type} eq 'NotebookPage') {
-                	$widget = $self->get_container($object->{name});
+                    $widget = $self->get_container($object->{name});
                 }
                 my $req = $widget->size_request();
                 $object->{width} = $req->width;
@@ -1335,6 +1343,11 @@ sub add_label($@) {
 
     # create label
     my $label;
+
+    # remove all spaces/tabs if a backslash is found => wrap in script
+    # in long text for better readability
+    $object->{title} =~ s/\R\h+//g;
+
     if ($self->is_underlined($object->{title})) {
         $label = Gtk2::Label->new_with_mnemonic(_($object->{title}));
         my $obj_ref = $self->get_widget($object->{widget});
@@ -1401,7 +1414,11 @@ sub add_frame($@) {
     $fixed->show();
     
     # set positon of the frame
-    $self->{container}->put($frame, $object->{pos_x}, $object->{pos_y});
+    unless (defined($object->{container})) {
+        $self->{container}->put($frame, $object->{pos_x}, $object->{pos_y});
+    } else {
+        $self->add_to_container($object->{name});
+    }
     
     $frame->show();
 }
@@ -1832,10 +1849,12 @@ sub add_image($@) {
 
 # ---------------------------------------------------------------------
 # add_text_view(Name => <name>,                     <= widget name - must be unique
-#               Pos => [pos_x, pos_y], 
-#               Size => [width, height],            
+#               Pos => [pos_x, pos_y],
+#               Size => [width, height],
 #               Path => <file_path>,
 #               Textbuf => <text_buffer_object>
+#               Text => <text_string>
+#               Font => [family, size, weight]      <= Optional. Sets the textview font. Font family is requiered if set. Default is current font
 #               LeftMargin => <in_pixel>            <= Optional. Default: 0
 #               RightMargin => <in_pixel>            <= Optional. Default: 0
 #               Wrapped => <wrap_mode>                <= Optional. Default: none (char, word, word-char)
@@ -1860,11 +1879,19 @@ sub add_text_view($@) {
     $object->{textview} = undef;
     $object->{path} = $params{'path'} || undef;
     $object->{textbuf} = $params{'textbuffer'} || undef;
+    $object->{font} = $params{'font'} || undef;
     my $left_margin = $params{'leftmargin'} || 0;
     my $right_margin = $params{'rightmargin'} || 0;
     my $wrapped = $params{'wrapped'} || 'none';
     my $justify = $params{'justify'} || 'left';
+    my $text = $params{'text'} || undef;
     my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
+    $object->{font} =  undef;
+    if (defined $params{'font'}) {
+        $object->{font} = scalar(@{$params{'font'}}) == 2 ? join(" ", @{$params{'font'}}) : 
+                          scalar(@{$params{'font'}}) == 1 ? "$params{'font'}[0] $self->{base}" : 
+                                                            "$params{'font'}[0] $params{'font'}[2] $params{'font'}[1]";
+    }
 
     # create textview
     my $content;
@@ -1887,18 +1914,29 @@ sub add_text_view($@) {
     $textview->set_justification($justify);
     
     # add content from path or text buffer to textview buffer
-    if (defined($object->{path})) {
+    if (defined($object->{path}) or defined($text)) {
         my $buffer = $textview->get_buffer();
-        $content = `cat $object->{path}` || $self->show_error($object, "Can't find $object->{path}. Check path.");
+        if (defined($object->{path})) {
+            $content = `cat $object->{path}` || $self->show_error($object, "Can't find $object->{path}. Check path.");
+        } else {
+            $content = $text;
+        }
         $buffer->set_text($content);
         $object->{textbuf} = $buffer;
     }
-       $textview->set_buffer($object->{textbuf});
-       $textview->show();
-       
-       # create a scrolled window to display scrollbars
-       my $scrolled_window = Gtk2::ScrolledWindow->new (undef, undef);
-       $scrolled_window->set_policy ('automatic', 'automatic');
+    $textview->set_buffer($object->{textbuf});
+    
+    # Change default font if defined
+    if (defined($object->{font})) {
+        my $font_desc = Gtk2::Pango::FontDescription->from_string($object->{font});
+        $textview->modify_font($font_desc);
+    }
+    
+    $textview->show();
+    
+    # create a scrolled window to display scrollbars
+    my $scrolled_window = Gtk2::ScrolledWindow->new (undef, undef);
+    $scrolled_window->set_policy ('automatic', 'automatic');
 
     # size of the text widget (scrolled window)
     $scrolled_window->set_size_request($object->{width}, $object->{height});
@@ -3876,6 +3914,7 @@ sub set_image($@) {
 # set_textview( Name => <name>,                     <= widget name - must be unique
 #               Path => <file_path>,
 #               Textbuf => <text_buffer_object>
+#               Text => <string>
 #)
 # ---------------------------------------------------------------------
 sub set_textview($@) {
@@ -3896,7 +3935,14 @@ sub set_textview($@) {
         $buffer->set_text($content);
         $object->{textbuf} = $buffer;
     }
-    
+    # add a given string
+    elsif (defined($params{'text'})) {
+        # add new content from text to text buffer
+        $buffer = $object->{textview}->get_buffer();
+        my $content = $params{'text'};;
+        $buffer->set_text($content);
+        $object->{textbuf} = $buffer;
+    }
     # add a given text buffer
     elsif (defined($params{'textbuffer'})) {
         $object->{textbuf} = $params{'textbuffer'};
