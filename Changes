@@ -63,3 +63,16 @@ Revision history for Perl extension SimpleGtk2.
       uncheck and not 0
     - add error message to get_group()
     - remove useless code in set_title()
+
+0.63  Wed Dec 10 2014
+    - add a translate function to translate separated parts in strings like 
+      translate("bla") . $number . translate("oha");
+    - add to tooltips and translate function that text can be wrapped in script
+      with a backslash
+    - fix bug that no frame could be added to a notebook page
+    - add to textview the possibility to specify a text and the wanted font
+
+
+
+
+
