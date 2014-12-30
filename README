@@ -1,4 +1,4 @@
-SimpleGtk2 version 0.62
+SimpleGtk2 version 0.64
 =======================
 
 SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
@@ -9,6 +9,7 @@ The most needed widgets are implemented with its common functions.
 
 But it is also possible to use the original functions provided by 
 Perl-Gtk2.
+
 
 The following widgets are implemented:
 
@@ -123,7 +124,7 @@ With SimpleGtk2:
                         Title => "Action", Sig => 'clicked', 
                         Func => sub {print("Hello Gtk2-Perl\n");});
     # show window
-    $window->show_all();
+    $window->show_and_run();
 
 
 INSTALLATION
