@@ -1,79 +1,22 @@
 Missing functions:
-UseGettext [locale_path]
-#set_active(<name>, <0/1>)
-#is_active(<name>)
-#hide_widget(<name>)
-#show_widget(<name>)
-#set_value(<name>, Value/MaxValue/MinValue => <new_value>)
-#set_values(<name>, Value_x => <new_value>, Value_y => <new_value>, ...)
-#get_value(<name>, Value/MaxValue/MinValue)
-#set_sensitive(<name>, <sensitivity>)
-#is_sensitive(<name>)
-#set_title(<name>, <new_title>)
-#get_title(<name>)
-#set_tooltip(<name>, <text>)
-#get_tooltip(<name>)
-set_forecolor(<name>, <color>) (name or hex)
-get_forecolor(<name>)
 set_backcolor(<name>, <color>) (name or hex)
 get_backcolor(<name>)
-#set_pos(<name>, <new_x>, <new_y>)
-#get_pos(<name>)
-#set_size(<name>, <new_width>, <new_height>)
-#get_size(<name>)
-set_font(<name>, <font_name>, [size, <style>])
-get_font(<name>, Size/Style)
-add_event_handler(<name>, <event>, <function>)
 
 Missing global parameters for widgets
-Font => [<font_name>, size, <style>(optional)]
-ForeColor => <color> (name or hex)
 BackColor => <color> (name or hex)
 
 List of Widgets
-#CheckBox: Display check box with a string                          <= check_button
-#HDipstick: Display a horizontal dipstick.                           <= Gtk2::Range Horizontal
-#HScrollBar: Display a horizontal scrollbar.                         <= Gtk2::ScrolledWindow Horizontal
-#ItemDraw: Display an icon.                                          <= Gtk2::Image
 ## List: Display a list. - later ##                                  <= Gtk2::TreeView List
-#Menu: Display a menu whom lets user to choose a option.             <= Gtk2::Menu(Bar)
-#MiniScroll: Display a very small vertical scrollbar.               <= spin_button
-#PopupMenu: Display a pop up menu                                   <= combo_box
-#PushButton: Display push button with an icon and/or a string.      <= button
-#RadioButton: Display radio button with a string.                   <= radio_button
-#Rectangle: Display a rectangle.                                    <= frame
 SwallowExec
-#TextField: Display a text input field                              <= entry
-#VDipstick: Display a vertical dipstick                              <= Gtk2::Range Vertical
-#VScrollBar: Display a vertical scrollbar.                           <= Gtk2::ScrolledWindow Vertical
 
 Needed/useful widgets
-#Gtk2::LinkButton
 Gtk2::Dialog
 Gtk2::ColorSelectionDialog
-Gtk2::FileSelection
-Gtk2::FontSelectionDialog
 Gtk2::InputDialog
-#Gtk2::MessageDialog
 Gtk2::Viewport (???)
 Gtk2::Statusbar
-#Gtk2::Notebook
-#Gtk2::TextView
 ## Gtk2::Toolbar - later ##
 Gtk2::ProgressBar
 Gtk2::TreeView Tree
-
-# ---------------------------------------------------------------------
-setter and getter methods
-
-set_title			get_title
-set_tooltip			get_tooltip
-set_size			get_size
-set_pos				get_pos
-set_active			is_active
-is_underlined
-set_sensitive		is_sensitive
-
-set_value			get_value
 
 
