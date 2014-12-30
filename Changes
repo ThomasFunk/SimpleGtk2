@@ -72,7 +72,23 @@ Revision history for Perl extension SimpleGtk2.
     - fix bug that no frame could be added to a notebook page
     - add to textview the possibility to specify a text and the wanted font
 
-
-
-
+0.64  Tue Dec 30 2014
+    - improve scaling of the GUI if font size has changed by the user. Using
+      now the char width instead of the font value
+    - add font change support for text in some widgets:
+      - all supported buttons except font, file chooser and spin button
+      - label
+      - frame
+      - entry
+      - notebook page
+    - add some additional convert functions for font: string <-> array
+    - add color change support (name or hex value) for text in some widgets:
+      - all supported buttons except font, file chooser and spin button
+      - label
+      - frame
+      - notebook page
+    - add stock icon support in image
+    - fix typo in set_title()
+    - clean up comments in source
+    - clean up TODO
 
