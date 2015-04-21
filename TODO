@@ -10,7 +10,6 @@ List of Widgets
 SwallowExec
 
 Needed/useful widgets
-Gtk2::Dialog
 Gtk2::ColorSelectionDialog
 Gtk2::InputDialog
 Gtk2::Viewport (???)
