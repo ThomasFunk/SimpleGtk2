@@ -92,3 +92,12 @@ Revision history for Perl extension SimpleGtk2.
     - clean up comments in source
     - clean up TODO
 
+0.65  Thu Apr 21 2015
+   - add page to add_spin_button().
+   - add the possibility to use an image object in add_immage().
+   - add the possibility to use show_msg_dialog() as a standalone message dialog
+     without a parent window.
+   - add new widget GtkStatusbar with or without a show-timeout. Other specials:
+     clear the complete stack or get message-id for a statusbar text or vice versa.
+   - add support for <keyname> => <value> in get_value().
+   - update README and clean TODO again.

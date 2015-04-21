@@ -1,4 +1,4 @@
-SimpleGtk2 version 0.64
+SimpleGtk2 version 0.65
 =======================
 
 SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
@@ -16,7 +16,7 @@ The following widgets are implemented:
 Windows
     - GtkWindow (toplevel)
     - GtkDialog (planned)
-    - GtkMessageDialog (normal and simple)
+    - GtkMessageDialog (normal, simple and standalone simple)
     - GtkAboutDialog (planned)
     - GtkAssistant (planned)
 
@@ -24,7 +24,7 @@ Display Widgets
     - GtkImage
     - GtkLabel
     - GtkProgressBar (planned)
-    - GtkStatusbar (planned)
+    - GtkStatusbar
     - GtkStatusIcon (perhaps)
     
 Buttons and Toggles
@@ -149,7 +149,7 @@ COPYRIGHT AND LICENCE
 
 This software stands under the GPL V2 or higher.
 
-Copyright (C) 2014 by Thomas Funk
+Copyright (C) 2015 by Thomas Funk
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as GPL V2 or higher.
@@ -157,8 +157,10 @@ it under the same terms as GPL V2 or higher.
 
 BUGS
 
-This library is a work of progress and not finished yet. But if you want
-to play around and send me bug reports or suggestion for improvements
-you're welcome ^^
+This library is a work of progress and not finished yet. But is full
+usuable with the available widgets. It is already used for the GUIs in 
+the develop version of Fvwm-Nightshade. So, if someone want to play with
+it, you're welcome. Please send me bug reports or suggestions for 
+improvements, thanks.
 
-Send it to <t.funk@web.de>
+Send them to <t.funk@web.de>
