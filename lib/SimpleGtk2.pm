@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Thomas Funk
+# Copyright (c) 2015 Thomas Funk
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ use POSIX qw(setlocale);
 use Locale::gettext;
 use I18N::Langinfo qw(langinfo CODESET);
 use Encode qw(decode encode);;
+use Scalar::Util qw(looks_like_number);
 
 #
 use Data::Dumper;
@@ -504,9 +505,9 @@ sub _update_size_pos_and_font($) {
 #               Fixed => <0/1>,                 <= Optional. Default: 0 (resizable)
 #               Iconpath => <icon_path>         <= Optional. Path to an icon shown in title bar or on iconify
 #               ThemeIcon => <theme_icon_name>  <= Optional. Icon name from current theme
-#               Statusbar => <show_time>        <= Optional. If set a statusbar will show at the bottom
-#                                                  of the window. <show_time> is the time in seconds the
-#                                                  message will show.
+#               Statusbar => <show_time|1>      <= Optional. If set a statusbar will show at the bottom
+#                                                  of the window. <show_time> is the time in milliseconds the
+#                                                  message will show or 1 if no show_time wanted.
 #)
 # ---------------------------------------------------------------------
 sub new_window ($@) {
@@ -539,8 +540,10 @@ sub new_window ($@) {
     my $object = _new_widget(%params);
     $object->{type} = 'toplevel';
     $object->{fixed} = $params{'fixed'} || 0;
-    $object->{statusbar} = $params{'statusbar'} || undef;
-
+    $object->{statusbar} = defined($params{'statusbar'}) ? $params{'statusbar'} : undef;
+    $object->{sbar_timeout} = defined($params{'statusbar'}) ? $params{'statusbar'} > 1 ? $params{'statusbar'} : 0 : undef;
+    $object->{sbar_stack} = [];
+    
     # create the window
     $window = new Gtk2::Window($object->{type});
     my $title = _($object->{title});
@@ -590,8 +593,8 @@ sub new_window ($@) {
         # create object for later use
         my %sb_params = (type => 'Statusbar', name => 'win_sbar');
         my $sb_object = _new_widget(%sb_params);
-        $sb_object->{timeout} = 5;
-        $sb_object->{statusbar} = $statusbar;
+        $sb_object->{sbar_timeout} = $object->{sbar_timeout};
+        $sb_object->{statusbar} = $object->{statusbar} = $statusbar;
         # get context id
         my $context_id = $statusbar->get_context_id($object->{name});
         $sb_object->{contextid} = $context_id;
@@ -601,6 +604,8 @@ sub new_window ($@) {
         $sb_object->{height} = $req->height;
         # add widget object to window objects list
         $self->{objects}->{$sb_object->{name}} = $sb_object;
+        # add vbox instead of statusbar to object
+        $sb_object->{ref} = $vbox;
     }
 
     # if window size is fixed, no scroll window is needed
@@ -868,8 +873,10 @@ sub get_object($$) {
     my $object = undef;
     if (ref($identifier) =~ m/^Gtk2::/) {
         foreach (keys %{$self->{objects}}) {
-            if ($self->{objects}->{$_}->{ref} == $identifier) {
-                $object = $self->{objects}->{$_};
+            if (defined($self->{objects}->{$_}->{$entry})) {
+                if ($self->{objects}->{$_}->{$entry} == $identifier) {
+                    $object = $self->{objects}->{$_};
+                }
             }
         }
     } else {
@@ -1684,6 +1691,7 @@ sub add_entry($@) {
 #                   Min     => <min_value>,         <= Double
 #                   Max     => <max_value>,         <= Double
 #                   Step    => <step_in/decrease>   <= Double
+#                   Page    => <page_in/decrease>   <= Double
 #                   Snap    => <snap_to_tick>       <= Optional
 #                   Align   => <align>              <= Optional (left, right)
 #                   Rate    => <from 0.0 to 1.0>    <= Optional. Default: 0.0
@@ -1709,6 +1717,7 @@ sub add_spin_button($@) {
     my $min = $params{'minimum'} || 0.0;
     my $max = $params{'maximum'} || 0.0;
     my $step = $params{'step'} || 0;
+    my $page = $params{'page'} || 0;
     my $align = $params{'align'} || 0;
     my $snap = $params{'snap'} || 0;
     my $climbrate = $params{'climbrate'} || 0.0;
@@ -1720,7 +1729,7 @@ sub add_spin_button($@) {
                                             $min,
                                             $max,
                                             $step,
-                                            0.0,
+                                            $page,
                                             0.0);
 
     # add to object for later manipulation
@@ -1986,6 +1995,7 @@ sub create_range_widget($@) {
 
 # ---------------------------------------------------------------------
 # add_image(    Name    => <name>,                      <= widget name - must be unique
+#               Image   => <image_object>
 #               Path    => <file_path>,
 #               Pixbuf  => <pix_buffer_object>
 #               Stock   => [<stock_name>,<stock_size>]  <= stock_size is per default 'dialog' because for scaling.
@@ -2013,6 +2023,7 @@ sub add_image($@) {
     $object->{stock} = $params{'stock'}[0] || undef;
     my $stock_size =  $params{'stock'}[1] || 'dialog';
     $object->{pixbuf} = $params{'pixbuffer'} || undef;
+    my $image = $params{'image'} || undef;
     $object->{image} = undef;
 
     # first create an eventbox to handle signals
@@ -2021,39 +2032,41 @@ sub add_image($@) {
     $eventbox->set_events('button_press_mask');
     $eventbox->show();
     
-    # create the pixbuf
-    my $scaled;
-    if (defined($object->{path})) {
-        $object->{pixbuf} = Gtk2::Gdk::Pixbuf->new_from_file("$object->{path}");
-    }
-    elsif (defined($object->{stock})) {
-        my $temp_image = Gtk2::Image->new_from_stock($object->{stock}, $stock_size);
-        $object->{pixbuf} = $temp_image->render_icon($object->{stock}, $stock_size);
-        # if no size is defined take the size from stock icon
-        my $scale_no = 2;
-        my $req = $temp_image->size_request();
-        unless (defined($object->{width})) {
-            $object->{width} = $req->width;
-            $scale_no -= 1;
+    unless (defined($image)) {
+        # create the pixbuf
+        my $scaled;
+        if (defined($object->{path})) {
+            $object->{pixbuf} = Gtk2::Gdk::Pixbuf->new_from_file("$object->{path}");
         }
-        unless (defined($object->{height})) {
-            $object->{height} = $req->height;
-            $scale_no -= 1;
+        elsif (defined($object->{stock})) {
+            my $temp_image = Gtk2::Image->new_from_stock($object->{stock}, $stock_size);
+            $object->{pixbuf} = $temp_image->render_icon($object->{stock}, $stock_size);
+            # if no size is defined take the size from stock icon
+            my $scale_no = 2;
+            my $req = $temp_image->size_request();
+            unless (defined($object->{width})) {
+                $object->{width} = $req->width;
+                $scale_no -= 1;
+            }
+            unless (defined($object->{height})) {
+                $object->{height} = $req->height;
+                $scale_no -= 1;
+            }
+            # scale stock icon
+            if ($scale_no != 0) {
+                $scaled = $object->{pixbuf}->scale_simple($object->{width},$object->{height},'bilinear');
+            } else {
+                $scaled = $object->{pixbuf};
+            }
         }
-        # scale stock icon
-        if ($scale_no != 0) {
+        
+        # scale pixbuf
+        unless (defined($object->{stock})) {
             $scaled = $object->{pixbuf}->scale_simple($object->{width},$object->{height},'bilinear');
-        } else {
-            $scaled = $object->{pixbuf};
         }
+        
+        $image = Gtk2::Image->new_from_pixbuf($scaled);
     }
-    
-    # scale pixbuf
-    unless (defined($object->{stock})) {
-        $scaled = $object->{pixbuf}->scale_simple($object->{width},$object->{height},'bilinear');
-    }
-    
-    my $image = Gtk2::Image->new_from_pixbuf($scaled);
     
     # for later manipulation we put the image reference to the image object
     $object->{image} = $image;
@@ -2598,32 +2611,41 @@ sub add_msg_dialog($@) {
 
 # ---------------------------------------------------------------------
 # show_msg_dialog(<name>, "<message_text1>", "<message_text2>")
-# or a simple one
+# or a simple one / as stand alone
 # show_msg_dialog(<dialog_type>, "<message_type>", "<message_text>")
 # returns the response ('ok', 'close', 'cancel', 'yes', 'no')
 # ---------------------------------------------------------------------
 sub show_msg_dialog($@) {
     my $self = shift;
-    my ($name, $msg1, $msg2) = @_;
+    my ($name, $msg1, $msg2);
+    # is it standalone? 
+    unless (ref($self) =~ /^SimpleGtk2/) {
+        $name = $self;
+        ($msg1, $msg2) = @_;
+    } else {
+        ($name, $msg1, $msg2) = @_;
+    }
     
     my $object = undef;
+    my $parent_window = undef;
     my $modal;
     my $flags;
     my $messagetype;
     my $dialogtype;
     my $color;
     
-    # is it a simple message dialog?
-    if (exists($self->{objects}->{$name})) {
-        # get object
-        $object = $self->get_object($name);
-        
-        $flags = $object->{modal} ? [qw/modal destroy-with-parent/] : 'destroy-with-parent';
-        $modal = $object->{modal};
-        $dialogtype = $object->{dialogtype};
-        $messagetype = $object->{messagetype};
-        
+    # Is it a standalone message dialog?
+    my $standalone = 1 || 0 unless (ref($self) =~ /^SimpleGtk2/);
+    my $simple = 0;
+    unless ($standalone) {
+        $simple = 1 unless exists($self->{objects}->{$name});
+        $parent_window = $self->{ref};
     } else {
+        $simple = 1;
+    }
+    
+    # is it a simple message dialog?
+    if ($simple) {
         $flags = [qw/modal destroy-with-parent/];
         $modal = 1;
         $dialogtype = $msg1;
@@ -2638,10 +2660,18 @@ sub show_msg_dialog($@) {
             $sign = '!'
         }
         $msg1 = "<span foreground=\"$color\" size=\"x-large\">" . _(ucfirst($messagetype)) . "$sign </span>"; 
+    } else {
+        # get object
+        $object = $self->get_object($name);
+        
+        $flags = $object->{modal} ? [qw/modal destroy-with-parent/] : 'destroy-with-parent';
+        $modal = $object->{modal};
+        $dialogtype = $object->{dialogtype};
+        $messagetype = $object->{messagetype};
     }
     
     # initialize message box
-    my $msg_box = Gtk2::MessageDialog->new_with_markup($self->{ref},
+    my $msg_box = Gtk2::MessageDialog->new_with_markup($parent_window,
                                             $flags,
                                             $messagetype,
                                             $dialogtype,
@@ -3024,7 +3054,195 @@ sub show_fontselection_dialog($@) {
 
 
 # ---------------------------------------------------------------------
-# add_list(    Name => <name>,                     <= widget name - must be unique
+# add_statusbar(Name => <name>,                 <= widget name - must be unique
+#               Pos => [pos_x, pos_y], 
+#               Size => [width, height],        <= Optional. Default is complete window width
+#               Timeout => <show_time>,         <= Optional. Default: 0
+#               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
+#               Sens => <sensitive>             <= Optional. Default: 1
+# ---------------------------------------------------------------------
+sub add_statusbar($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Statusbar';
+    
+
+    # statusbar specific fields
+    $object->{sbar_stack} = [];
+    $object->{sbar_last_msg_id} = undef;
+    $object->{sbar_timeout} = defined($params{'timeout'}) ? $params{'timeout'} : 0;
+    my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+    
+    # create vbox to put statusbar in (for showing)
+    my $vbox = Gtk2::VBox->new();
+    
+    # check if width and height is given
+    if ($object->{width} || $object->{height}) {
+        $vbox->set_size_request ($object->{width}, $object->{height});
+    } else {
+        # get the width of the main window
+        my $win_width = $self->get_object($self->{name})->{width};
+        
+        if ($win_width != 0) {
+	        # add 2 pixels to pos_x for centering
+	        $object->{pos_x} += 2;
+	        
+	        # create statusbar width (-2 is needed because of the vertical scrollbar)
+	        my $sbar_width = $win_width - 2*$object->{pos_x} - 2;
+	        $vbox->set_size_request ($sbar_width, -1);
+        }
+    }
+
+    # create statusbar
+    my $statusbar = Gtk2::Statusbar->new();
+    # no resize grip
+    $statusbar->set_has_resize_grip(0);
+    # get context id
+    my $context_id = $statusbar->get_context_id($object->{name});
+    $object->{contextid} = $context_id;
+    $statusbar->show();
+    
+	# for later manipulation we put the statusbar reference to the statusbar object
+	$object->{statusbar} = $statusbar;
+    
+    $vbox->add($statusbar);
+    
+    # add vbox instead of statusbar to object
+    $object->{ref} = $vbox;
+    
+    # add object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # position the statusbar
+    $self->add_to_container($object->{name});
+
+    # get size
+    my $req = $vbox->size_request();
+    $object->{width} = $req->width;
+    $object->{height} = $req->height;
+
+     # set sensitive state
+    $object->{ref}->set_sensitive($sensitive) if defined($sensitive);
+    
+    $vbox->show();
+}
+
+# ---------------------------------------------------------------------
+# set_sb_text(<name>, <text>)
+# <name> is optional. If not set the main window statusbar will use, if available
+# Return value is the message id
+# ---------------------------------------------------------------------
+sub set_sb_text($@) {
+    my $self = shift;
+    my ($name, $text) = @_;
+    
+    unless (defined($text)) {
+        $text = $name;
+        $name = 'win_sbar';
+    }
+    
+    # get statusbar object
+    my $object = $self->get_object($name);
+    
+    # show message
+    my $msg_id = $object->{statusbar}->push($object->{contextid}, $text);
+    push(@{$object->{sbar_stack}}, {$msg_id => $text});
+    unless ($object->{sbar_timeout} == 0) {
+        Glib::Timeout->add($object->{sbar_timeout},
+            sub{
+                $object->{statusbar}->remove($object->{contextid}, $msg_id);
+                delete $object->{sbar_stack}{$msg_id};
+            });
+    }
+    return $msg_id;
+}
+
+# ---------------------------------------------------------------------
+# remove_sb_text(<name>, <text>|<msg-id>)
+# <name> is optional. If not set the main window statusbar will use, if available
+# <text> is optional. If not set the last message will remove
+# ---------------------------------------------------------------------
+sub remove_sb_text($@) {
+    my $self = shift;
+    my ($name, $text_or_id) = @_;
+    
+    unless (defined($text_or_id)) {
+        $text_or_id = $name if defined($name);
+        $name = 'win_sbar';
+    }
+    
+    # get statusbar object
+    my $object = $self->get_object($name);
+    
+    if (defined($text_or_id)) {
+        my $msg_id;
+        my $msg;
+        if (looks_like_number($text_or_id)) {
+            my @new_sb_stack;
+            foreach my $i (0..$#{$object->{sbar_stack}}) {
+                foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+                    unless ($key == $text_or_id) {
+                        push(@new_sb_stack, {$key => $object->{sbar_stack}[$i]{$key}});
+                    } else {
+                        $object->{statusbar}->remove($object->{contextid}, $text_or_id);
+                    }
+                }
+            }
+            $object->{sbar_stack} = \@new_sb_stack;
+        } else {
+            if ($text_or_id eq 'last') {
+                $object->{statusbar}->pop($object->{contextid});
+                pop(@{$object->{sbar_stack}});
+            } else {
+                my @new_sb_stack;
+                foreach my $i (0..$#{$object->{sbar_stack}}) {
+                    foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+                        unless ($object->{sbar_stack}[$i]{$key} eq $text_or_id) {
+                            push(@new_sb_stack, {$key => $object->{sbar_stack}[$i]{$key}});
+                        } else {
+                            $object->{statusbar}->remove($object->{contextid}, $key);
+                        }
+                    }
+                }
+                $object->{sbar_stack} = \@new_sb_stack;
+            }
+        }
+    } else {
+        $object->{statusbar}->pop($object->{contextid});
+        pop(@{$object->{sbar_stack}});
+    }
+}
+
+# ---------------------------------------------------------------------
+# clear_sb_stack(<name>)
+# <name> is optional. If not set the main window statusbar will use, if available
+# ---------------------------------------------------------------------
+sub clear_sb_stack($@) {
+    my $self = shift;
+    my $name = @_;
+    
+    unless (defined($name)) {
+        $name = 'win_sbar';
+    }
+    
+    # get statusbar object
+    my $object = $self->get_object($name);
+    
+    # remove from the beginning
+    foreach my $i (0..$#{$object->{sbar_stack}}) {
+        foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+            $object->{statusbar}->remove($object->{contextid}, $key);
+        }
+    }
+    $object->{sbar_stack} = [];
+}
+
+# ---------------------------------------------------------------------
+# add_list( Name => <name>,                     <= widget name - must be unique
 #           Pos => [pos_x, pos_y], 
 #           Size => [width, height],            <= Optional
 #           Data => [Array_of_values>],
@@ -3201,12 +3419,13 @@ sub is_underlined($@) {
 }
 
 # ---------------------------------------------------------------------
-# get_value(<name>, <keyname>)
+# get_value(<name>, <keyname> | <keyname> => <value>)
 # ---------------------------------------------------------------------
 sub get_value($@) {
     my $self = shift;
     my $name = shift;
-    my $key = _extend(lc(shift));
+    my @key_value = @_;
+    my $key = &_extend(lc($key_value[0]));
     my $value = 'Error';
     
     # get widget object
@@ -3339,12 +3558,50 @@ sub get_value($@) {
         elsif ($key eq 'pages') {$value = $object->{ref}->get_n_pages();}
         # popup active?
         elsif ($key eq 'popup') {$value = $object->{popup};}
+        # get page number with page name
+        elsif ($key eq 'name2number') {
+            # get count of pages
+            my $pages = $object->{ref}->get_n_pages();
+            my $i = 0;
+            while ($i < $pages) {
+                # get page widget
+                my $page = $object->{ref}->get_nth_page($i);
+                my $page_object = $self->get_object($page);
+                if ($page_object->{name} eq $key_value[1]) {
+                    $value = $i;
+                    last;
+                }
+                $i += 1;
+            }
+        }
         # get page name with number
         elsif ($key eq 'number2name') {
             # get page widget
-            my $page = $object->{ref}->get_nth_page();
+            my $page = $object->{ref}->get_nth_page($key_value[1]);
             my $page_object = $self->get_object($page);
             $value = $page_object->{name};
+        }
+        # get page number with page title
+        elsif ($key eq 'title2number') {
+            # get count of pages
+            my $pages = $object->{ref}->get_n_pages();
+            my $i = 0;
+            while ($i < $pages) {
+                # get page widget
+                my $page = $object->{ref}->get_nth_page($i);
+                my $page_object = $self->get_object($page);
+                if ($page_object->{title} eq $key_value[1]) {
+                    $value = $i;
+                    last;
+                }
+                $i += 1;
+            }
+        }
+        elsif ($key eq 'number2title') {
+            # get page widget
+            my $page = $object->{ref}->get_nth_page($key_value[1]);
+            my $page_object = $self->get_object($page);
+            $value = $page_object->{title};
         }
         # is scrollbar active?
         elsif ($key eq 'scrollable') {$value = $object->{ref}->get_scrollable();}
@@ -3415,6 +3672,51 @@ sub get_value($@) {
                     }
                 }
             }
+        }
+    }
+
+    elsif ($object->{type} eq 'Statusbar') {
+        if ($key eq 'message') {
+            my @value;
+            # get the text of the message-id
+            if (looks_like_number($key_value[1])) {
+                foreach my $i (0..$#{$object->{sbar_stack}}) {
+                    foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+                        if ($key == $key_value[1]) {
+                            $value = $object->{sbar_stack}[$i]{$key};
+                            last;
+                        }
+                    }
+                }
+            # get last message
+            } else {
+                @value = values(%{$object->{sbar_stack}[-1]});
+                $value = $value[0];
+            }
+        }
+        # get message id of the text
+        elsif ($key eq 'msgid') {
+            unless ($key_value[1] eq 'last') {
+                foreach my $href (@{$object->{sbar_stack}}) {
+                    foreach my $key (keys %{$href}) {
+                         if ($href->{$key} eq $key_value[1]) {
+                             $value = $key;
+                             last;
+                         }
+                    }
+                }
+            # get last message id
+            } else {
+                my @last = keys (%{$object->{sbar_stack}[-1]});
+                $value = $last[0];
+            }
+        }
+        # get stack reference
+        elsif ($key eq 'stackref') {
+            $value = $object->{sbar_stack};
+        }
+        elsif ($key eq 'stackcount') {
+            $value = scalar @{$object->{sbar_stack}};
         }
     }
 
@@ -3924,6 +4226,12 @@ sub set_values($@) {
             $reconfigure = 1;
             delete $params{'step'};
         }
+        # set pages
+        if (defined($params{'page'})) {
+            $object->{adjustment}->page_increment($params{'page'});
+            $reconfigure = 1;
+            delete $params{'page'};
+        }
         # set start value
         if (defined($params{'start'})) {
             $object->{adjustment}->value($params{'start'});
@@ -3942,20 +4250,44 @@ sub set_values($@) {
                 $object->{ref}->set_snap_to_ticks($params{'snap'});
                 delete $params{'snap'};
             }
+#            # set digits
+#            if (defined($params{'digits'}) and $reconfigure) {
+#                $digits = $params{'digits'};
+#            } else {
+#            	print "params{'digits'}: '$params{'digits'}'";
+#            	print "reconfigure: '$reconfigure'";
+#                $object->{ref}->set_digits($params{'digits'}) unless $reconfigure;
+#            }
+#            delete $params{'digits'} if defined($params{'digits'});
+
+#            # set climbrate
+#            if (defined($params{'climbrate'}) and $reconfigure) {
+#                $climbrate = $params{'climbrate'};
+#            } else {
+#                $reconfigure = 1 unless defined($params{'climbrate'});
+#            }
+#            delete $params{'climbrate'} if defined($params{'climbrate'});
+
             # set digits
-            if (defined($params{'digits'}) and $reconfigure) {
-                $digits = $params{'digits'};
-            } else {
-                $object->{ref}->set_digits($params{'digits'}) unless $reconfigure;
+            if (defined($params{'digits'})) {
+            	if ($reconfigure) {
+                	$digits = $params{'digits'};
+            	} else {
+#	            	print "params{'digits'}: '$params{'digits'}'";
+#	            	print "reconfigure: '$reconfigure'";
+	                $object->{ref}->set_digits($params{'digits'});
+            	}
+	            delete $params{'digits'};
             }
-            delete $params{'digits'} if defined($params{'digits'});
             # set climbrate
-            if (defined($params{'climbrate'}) and $reconfigure) {
-                $climbrate = $params{'climbrate'};
-            } else {
-                $reconfigure = 1 unless defined($params{'climbrate'});
+            if (defined($params{'climbrate'})) {
+            	if ($reconfigure) {
+	                $climbrate = $params{'climbrate'};
+            	} else {
+	                $reconfigure = 1;
+            	}
+	            delete $params{'climbrate'};
             }
-            delete $params{'climbrate'} if defined($params{'climbrate'});
 
             # reconfigure SpinButton if needed
             if ($reconfigure) {
