@@ -117,4 +117,10 @@ Revision history for Perl extension SimpleGtk2.
     - remove hash entry deletion in set_sb_text() after timeout - not needed.
     - remove in add_text_view() a double set of $object->{textview}.
     - update README and clean TODO.
+    - add new examples:
+      - file_chooser_simple.pl
+      - font_button_simple.pl
+      - standalone_msg_dialog_simple.pl
+      - statusbar_simple.pl
+    - add 'use strict' to all examples.
     
