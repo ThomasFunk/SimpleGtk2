@@ -6,16 +6,13 @@ Missing global parameters for widgets
 BackColor => <color> (name or hex)
 
 List of Widgets
-## List: Display a list. - later ##                                  <= Gtk2::TreeView List
 SwallowExec
 
 Needed/useful widgets
 Gtk2::ColorSelectionDialog
 Gtk2::InputDialog
 Gtk2::Viewport (???)
-Gtk2::Statusbar
 ## Gtk2::Toolbar - later ##
 Gtk2::ProgressBar
-Gtk2::TreeView Tree
 
 

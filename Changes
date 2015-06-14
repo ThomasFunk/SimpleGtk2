@@ -93,11 +93,28 @@ Revision history for Perl extension SimpleGtk2.
     - clean up TODO
 
 0.65  Thu Apr 21 2015
-   - add page to add_spin_button().
-   - add the possibility to use an image object in add_immage().
-   - add the possibility to use show_msg_dialog() as a standalone message dialog
-     without a parent window.
-   - add new widget GtkStatusbar with or without a show-timeout. Other specials:
-     clear the complete stack or get message-id for a statusbar text or vice versa.
-   - add support for <keyname> => <value> in get_value().
-   - update README and clean TODO again.
+    - add page to add_spin_button().
+    - add the possibility to use an image object in add_immage().
+    - add the possibility to use show_msg_dialog() as a standalone message dialog
+      without a parent window.
+    - add new widget GtkStatusbar with or without a show-timeout. Other specials:
+      clear the complete stack or get message-id for a statusbar text or vice versa.
+    - add support for <keyname> => <value> in get_value().
+    - update README and clean TODO again.
+
+0.66  Fri Jun 14 2015
+    - change some show_error() to internal_die() for better error handling.
+    - add a '_' infront of internal functions.
+    - fix missing param deletes in set_value().
+    - reorganize functions depending on the listing on developer.gnome.org/gtk2/stable.
+    - exchange tabs with spaces.
+    - add new widget GtkDrawingArea with add_drawing_area() and initial_draw() - needed
+      because drawing must initialized before gtk2->show().
+    - remove _clear_sb_after_timeout().
+    - add new widget GtkTreeview with List (based on Gtk2::Ex::Simple::List) and Tree
+      (based on Gtk2::Ex::Simple::Tree).
+    - fix bug in get_value() that undefs will used correctly.
+    - remove hash entry deletion in set_sb_text() after timeout - not needed.
+    - remove in add_text_view() a double set of $object->{textview}.
+    - update README and clean TODO.
+    

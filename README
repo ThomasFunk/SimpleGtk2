@@ -1,4 +1,4 @@
-SimpleGtk2 version 0.65
+SimpleGtk2 version 0.66
 =======================
 
 SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
@@ -44,8 +44,8 @@ Multiline Text Editor
     - GtkTextView
 
 Tree, List and Icon Grid Widgets
-    - GtkTreeView (planned)
-    - GtkListView (planned)
+    - GtkTreeView (in progress)
+    - GtkListView (in progress)
     
 Menus, Combo Box, Toolbar
     - GtkComboBox
@@ -59,7 +59,7 @@ Menus, Combo Box, Toolbar
         - GtkTearoffMenuItem
     - GtkToolbar (planned)
 
-Selectors (File/Font/Color/Input Devices)
+Selectors (File/Font/Color)
     - GtkColorSelectionDialog (planned)
     - GtkFileChooserDialog (normal and simple)
     - GtkFontSelectionDialog (normal and simple)
@@ -143,6 +143,8 @@ This module requires these other modules and libraries:
 
   Test
   Perl-Gtk2
+  Gtk2::Ex::Simple::List (will be added in the future)
+  Gtk2::Ex::Simple::Tree (will be added in the future)
 
 
 COPYRIGHT AND LICENCE
