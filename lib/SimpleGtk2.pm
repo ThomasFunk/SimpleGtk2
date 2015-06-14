@@ -24,6 +24,8 @@ use Locale::gettext;
 use I18N::Langinfo qw(langinfo CODESET);
 use Encode qw(decode encode);;
 use Scalar::Util qw(looks_like_number);
+use Gtk2::Ex::Simple::List;
+use Gtk2::Ex::Simple::Tree;
 
 #
 use Data::Dumper;
@@ -38,20 +40,35 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $GETTEXT $LANGUAGE $LC
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 
-# This allows declaration	use SimpleGtk2 ':all';
+# This allows declaration    use SimpleGtk2 ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
-%EXPORT_TAGS = ( 'all' => [ qw(
-	
-) ] );
+#%EXPORT_TAGS = ( 'all' => [ qw(
+#    
+#) ] );
 
-@EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+#@EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+@EXPORT_OK = ();
+@EXPORT = qw(use_gettext translate get_fontsize get_fontfamily get_fontweight 
+            get_color new_window internal_die show_error show_message show 
+            show_and_run add_signal_handler remove_signal_handler get_object 
+            exist_object get_widget hide_widget show_widget get_container 
+            add_to_container add_tooltip add_button add_link_button 
+            add_filechooser_button add_font_button add_check_button 
+            add_radio_button add_label add_frame add_entry add_spin_button 
+            add_combo_box add_slider add_scroll_bar add_image add_drawing_area 
+            add_text_view add_menu_bar add_menu add_menu_item add_notebook 
+            add_nb_page add_msg_dialog show_msg_dialog add_filechooser_dialog 
+            show_filechooser_dialog add_fontselection_dialog show_fontselection_dialog 
+            add_statusbar add_treeview is_sensitive get_title get_tooltip get_size 
+            get_pos is_active is_underlined get_value get_font_string get_font_array 
+            font_array_to_string font_string_to_array get_image get_textview 
+            get_treeview get_group set_sensitive set_title set_tooltip set_size 
+            set_pos set_value set_values set_image set_textview set_font 
+            set_font_color remove_nb_page initial_draw set_sb_text remove_sb_text 
+            clear_sb_stack modify_list_data modify_tree_data);
 
-@EXPORT = qw(
-	
-);
-
-$VERSION = '0.64';
+$VERSION = '0.65';
 $LANGUAGE = $ENV{LANG} || 'en_US.UTF-8';
 $CODESET = langinfo(CODESET());
 $GETTEXT = 0;
@@ -62,69 +79,6 @@ POSIX::setlocale(&POSIX::LC_ALL, $LANGUAGE);
 # internal functions
 ######################################################################
 
-# ---------------------------------------------------------------------
-# Specifies a colon separated list of "locale path" in which to search
-# for the string translation file and the translation file.
-# use_gettext(<locale_paths>, <translation_file>, <codeset>)
-# ---------------------------------------------------------------------
-sub use_gettext {
-    my ($app_name, $localepaths) = @_;
-    # check where's the + if any
-    my $add = 'end';
-    if ($localepaths =~ m/\+/) {
-        $add = 'begin' if $localepaths =~ m/\+$/;
-        $localepaths =~ s/^\+://;
-        $localepaths =~ s/:\+$//;
-    }
-    # splitting on ':'
-    my @textdomainbinds = split(':', $localepaths);
-    # add the default locale paths depending on $add
-    my @defaults = ('/usr/local/share/locale', '/usr/share/locale');
-    if ($add eq 'end') {
-        @textdomainbinds = (@defaults, @textdomainbinds);
-    } else {
-        @textdomainbinds = (@textdomainbinds, @defaults);
-    }
-    # get the language_country part of $LANGUAGE
-    my @lang_country = split('\.', $LANGUAGE);
-    $lang_country[1] = $lang_country[0];
-    my @lang = split('_', $lang_country[0]);
-    $lang_country[0] = $lang[0];
-    
-    # now search for the file
-    foreach my $path (@textdomainbinds) {
-        foreach my $language (@lang_country) {
-            my $full_locale_dir = "$path/$language/LC_MESSAGES";
-            if (-d $full_locale_dir) {
-                next unless (-f "$full_locale_dir/$app_name.mo");
-                $GETTEXT = 1;
-                $LCDIRECTORY = $path;
-                $APPNAME = $app_name;
-                Locale::gettext::bindtextdomain($APPNAME, $LCDIRECTORY);
-                Locale::gettext::textdomain($APPNAME);
-                return;
-            }
-        }
-    }
-}
-
-# ---------------------------------------------------------------------
-# internal translation function
-# ---------------------------------------------------------------------
-sub _ {
-    my $text = shift;
-    return ($GETTEXT == 1 ? decode("utf-8", Locale::gettext::gettext($text)) : $text);
-}
-
-# ---------------------------------------------------------------------
-# external translation function used to translate text part
-# ---------------------------------------------------------------------
-sub translate($$) {
-    my $self = shift;
-    my $text = shift;
-    $text =~ s/\R\h+//g;
-    return _($text);
-}
 # ---------------------------------------------------------------------
 # global widget object structure for window object list
 # ---------------------------------------------------------------------
@@ -175,7 +129,8 @@ sub _normalize($@) {
 sub _extend {
     my $short = shift;
     
-    if ($short =~ /^(pos|tip|func|sig|sens|min|max|orient|valuepos|pixbuf|textbuf|scroll|dtype|mtype|rfunc|fname)/) {
+    if ($short =~ /^(pos|tip|func|sig|sens|min|max|orient|valuepos|pixbuf|textbuf|
+                    wrap|climb|col|scroll|prev|cur|no|dtype|mtype|rfunc|fname)/) {
         if    ($short eq 'pos') {$short = 'position';}
         elsif ($short eq 'tip') {$short = 'tooltip';}
         elsif ($short eq 'func') {$short = 'function';}
@@ -310,75 +265,44 @@ sub _set_commons($@) {
                 $object->{height} = $req->height;
             }
         }
-	}
-}
-
-sub _clear_sb_after_timeout {
-    my ($object, $msg_id) = @_; 
-    my $pid = fork;
-    return if $pid;     # in the parent process
-    
-    # wait x seconds before removing message
-    print "start\n";
-    print "-------------------------------\n";
-    print Dumper(\$object);
-    sleep 2;
-    #remove message
-#    $object->{statusbar}->push($object->{contextid}, 'bla');
-    $object->{statusbar}->remove($object->{contextid}, $msg_id);
-    print "end\n";
-    exit;  # end child process
-}
-
-
-# ---------------------------------------------------------------------
-# get the current fontsize of a widget
-# get_fontsize(<widget>)
-# ---------------------------------------------------------------------
-sub get_fontsize($) {
-    my $widget = shift;
-    my $context = $widget->get_pango_context();
-    my $fontDesc = $context->get_font_description();
-    my $language = $context->get_language();
-    my $metrics = $context->get_metrics($fontDesc, $language);
-    my $char_widths = $metrics->get_approximate_char_width();
-    my $fontsize = $fontDesc->get_size();
-    my $pango_scale = Gtk2::Pango->scale();
-    my $char_scale = $char_widths/$pango_scale;
-    if ($fontsize > 200) {
-        $fontsize = $fontsize/$pango_scale ;
     }
+}
+
+
+# ---------------------------------------------------------------------
+# add widget to a fixed container
+# _add_to_container(<name>)
+# ---------------------------------------------------------------------
+sub _add_to_container($@) {
+    my $self = shift;
+    my $name = shift;
+    my $object = $self->get_object($name);
     
-    return $fontsize;
-}
-
-
-# ---------------------------------------------------------------------
-# get the current font family of a widget
-# get_fontfamily(<widget>)
-# ---------------------------------------------------------------------
-sub get_fontfamily($) {
-    my $widget = shift;
-    my $context = $widget->get_pango_context();
-    my $fontDesc = $context->get_font_description();
-    my $fontfamily = $fontDesc->get_family();
-    return $fontfamily
-}
-
-# ---------------------------------------------------------------------
-# get the current font weight of a widget
-# get_fontweight(<widget>)
-# ---------------------------------------------------------------------
-sub get_fontweight($) {
-    my $widget = shift;
-    my $context = $widget->get_pango_context();
-    my $fontDesc = $context->get_font_description();
-    my @fontarray = &font_string_to_array($fontDesc->to_string());
-    unless (@fontarray = 3) {
-        return $fontarray[2];
+    if (defined($object->{container})) {
+        my $container = $self->get_container($object->{container});
+        my $container_obj = $self->get_object($object->{container});
+        
+        # calculate position
+        my $x = $object->{pos_x};
+        my $y = $object->{pos_y};
+        if ($container_obj->{type} eq 'Frame') {
+            ($x, $y) = $self->_get_pos_in_frame($object->{container}, $object->{pos_x}, $object->{pos_y});
+        }
+        
+        $container->put($object->{ref}, $x, $y);
     } else {
-        return "";
+        $self->{container}->put($object->{ref}, $object->{pos_x}, $object->{pos_y});
     }
+}
+
+
+# ---------------------------------------------------------------------
+# _get_container(<name_of_container>)
+# ---------------------------------------------------------------------
+sub _get_container($@) {
+    my $self = shift;
+    my $name = shift;
+    return $self->{containers}->{$name};
 }
 
 
@@ -486,14 +410,1826 @@ sub _update_size_pos_and_font($) {
                     $object->{height} = $req->height;
                 }
                 $self->set_size($object->{name}, $self->_scale($object->{width}), $self->_scale($object->{height}));
-        	}
+            }
         }
     }     
 }
 
 
+# ---------------------------------------------------------------------
+# function to add subs to $self->{subs} to execute them between show_all()
+# and gtk2->main like drawings
+# ---------------------------------------------------------------------
+sub _add_subs($@) {
+    my $self = shift;
+    my ($function, $data) = @_;
+    my @keys = keys %{$self->{subs}};
+    if (defined($data)) {
+        $self->{subs}{scalar @keys} = sub {$function->($data);};
+    } else {
+        $self->{subs}{scalar @keys} = $function;
+    }
+}
+
+
 ######################################################################
-# Main class
+# Internal callback functions
+######################################################################
+
+sub _query_tooltip {
+    my ($widget, $x, $y, $keyb, $tooltip) = @_;
+    
+    return 0 if $keyb;
+    
+    $tooltip->set_text($widget->get_tooltip_text);
+    return 1;
+}
+
+sub _on_changed_update {
+    my ($widget, $self) = @_;
+    
+    my $changes;
+    my $key;
+    
+    # get object
+    my $object = $self->get_object($widget);
+    
+    if ($object->{type} eq 'Entry') {
+        # get text
+        $changes = $object->{ref}->get_text();
+        $key = 'title';
+        # update object
+        $object->{$key} = $changes;
+    }
+    elsif ($object->{type} eq 'SpinButton') {
+        $changes = $object->{ref}->get_value();
+        $key = 'value';
+        # update object
+        $object->{$key} = $changes;
+    }    
+}
+
+
+sub _on_font_changed($) {
+    my $self = shift;
+    my $new_font = $self->get_font_string($self->{name});
+    my $changed = 0;
+    
+    # has font changed?
+    if ($new_font ne $self->{font}) {
+        # update the main window font
+        $self->{old_font} = $self->{font};
+        $self->{font} = $self->get_font_string($self->{name});
+        $changed = 1;
+    }
+    
+    if ($changed) {
+        my $new_fontsize = &get_fontsize($self->{ref});
+
+        # update new font size and scale factor if font size has changed
+        if ($new_fontsize != $self->{fontsize}) {
+            $self->{old_fontsize} = $self->{fontsize};
+            $self->{fontsize} = $new_fontsize;
+            $self->{scalefactor} = $self->_calc_scalefactor($self->{base}, $self->{fontsize});
+        }
+    
+        # update size and position of all widgets
+        $self->_update_size_pos_and_font();
+    
+        # and now the window itself
+        sleep 1; # needed because window resize faster than the widgets
+        my $object = $self->get_object($self->{name});
+        $object->{width} = $self->_scale($object->{width});
+        $object->{height} = $self->_scale($object->{height});
+        $object->{ref}->resize($object->{width}, $object->{height});
+        
+        # Now the current base can be set if different from fontsize
+        if ($self->{scalefactor} != 1) {
+            $self->{base} = $self->{fontsize};
+            $self->{scalefactor} = 1.0;
+        }
+    }
+}
+
+# Create a new backing pixmap of the appropriate size
+sub _configure_event {
+    my ($widget, $event, $self) = @_;
+    my $object = $self->get_object($widget);
+    
+    $object->{pixmap} = Gtk2::Gdk::Pixmap->new($widget->window, 
+                                     $widget->allocation->width, 
+                                     $widget->allocation->height, 
+                                     -1);
+
+    $object->{pixmap}->draw_rectangle($widget->style->white_gc,    # or black_gc
+                                        1,
+                                        0, 
+                                        0,
+                                        $widget->allocation->width,
+                                        $widget->allocation->height);
+
+    my $gc = Gtk2::Gdk::GC->new($object->{pixmap});
+    my $colormap = $object->{pixmap}->get_colormap;
+
+    # set a default foreground
+    $gc->set_foreground($self->get_color($colormap, 'red'));
+    
+    return 1;
+}
+
+
+# Redraw the screen from the backing pixmap
+sub _expose_event {
+    my ($widget, $event, $self) = @_;
+    my $object = $self->get_object($widget);
+
+    $widget->window->draw_drawable($widget->style->fg_gc($widget->state), 
+                                   $object->{pixmap},
+                                   $event->area->x,     $event->area->y,
+                                   $event->area->x,     $event->area->y,
+                                   $event->area->width, $event->area->height);
+
+   return 0;
+}
+
+
+######################################################################
+# Helper functions
+######################################################################
+
+# ---------------------------------------------------------------------
+# Specifies a colon separated list of "locale path" in which to search
+# for the string translation file and the translation file.
+# use_gettext(<locale_paths>, <translation_file>, <codeset>)
+# ---------------------------------------------------------------------
+sub use_gettext {
+    my ($app_name, $localepaths) = @_;
+    # check where's the + if any
+    my $add = 'end';
+    if ($localepaths =~ m/\+/) {
+        $add = 'begin' if $localepaths =~ m/\+$/;
+        $localepaths =~ s/^\+://;
+        $localepaths =~ s/:\+$//;
+    }
+    # splitting on ':'
+    my @textdomainbinds = split(':', $localepaths);
+    # add the default locale paths depending on $add
+    my @defaults = ('/usr/local/share/locale', '/usr/share/locale');
+    if ($add eq 'end') {
+        @textdomainbinds = (@defaults, @textdomainbinds);
+    } else {
+        @textdomainbinds = (@textdomainbinds, @defaults);
+    }
+    # get the language_country part of $LANGUAGE
+    my @lang_country = split('\.', $LANGUAGE);
+    $lang_country[1] = $lang_country[0];
+    my @lang = split('_', $lang_country[0]);
+    $lang_country[0] = $lang[0];
+    
+    # now search for the file
+    foreach my $path (@textdomainbinds) {
+        foreach my $language (@lang_country) {
+            my $full_locale_dir = "$path/$language/LC_MESSAGES";
+            if (-d $full_locale_dir) {
+                next unless (-f "$full_locale_dir/$app_name.mo");
+                $GETTEXT = 1;
+                $LCDIRECTORY = $path;
+                $APPNAME = $app_name;
+                Locale::gettext::bindtextdomain($APPNAME, $LCDIRECTORY);
+                Locale::gettext::textdomain($APPNAME);
+                return;
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------------
+# internal translation function
+# ---------------------------------------------------------------------
+sub _ {
+    my $text = shift;
+    return ($GETTEXT == 1 ? decode("utf-8", Locale::gettext::gettext($text)) : $text);
+}
+
+# ---------------------------------------------------------------------
+# external translation function used to translate text part
+# ---------------------------------------------------------------------
+sub translate($$) {
+    my $self = shift;
+    my $text = shift;
+    $text =~ s/\R\h+//g;
+    return _($text);
+
+
+# ---------------------------------------------------------------------
+# internal die if fatal error occur
+# ---------------------------------------------------------------------
+sub internal_die ($@) {
+    my $self = shift;
+    my ($object, $msg) = @_;
+    $msg =~ s/([^\.!?])$/$1./;
+    if (defined($msg)) {
+        die $self->{name} . "->$object->{name}: $msg Exiting.\n";
+    } else {
+        die $self->{name} . ": $msg Exiting.\n";
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# print error message to standard error
+# ---------------------------------------------------------------------
+sub show_error ($@) {
+    my $self = shift;
+    my ($object, $msg) = @_;
+    if (defined($msg)) {
+        print STDERR "[" . $self->{name} . "->$object->{name}][err]: $msg\n";
+    } else {
+        print STDERR "[" . $self->{objects}->{$self->{name}}->{title} . "][err]: $object\n";
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# print message to standard error
+# ---------------------------------------------------------------------
+sub show_message ($@) {
+    my $self = shift;
+    my ($object, $msg) = @_;
+    if (defined($msg)) {
+        print STDERR "[" . $self->{name} . "->$object->{name}][msg]: $msg\n";
+    } else {
+        print STDERR "[" . $self->{objects}->{$self->{name}}->{title} . "][msg]: $object\n";
+    }
+}
+
+
+######################################################################
+# Support Functions
+# Common functions for signaling, object handling, etc.
+######################################################################
+
+# ---------------------------------------------------------------------
+# add signal to widget
+# add_signal_handler(<name>, <signal>, <function>, <data>)
+# ---------------------------------------------------------------------
+sub add_signal_handler($@) {
+    my $self = shift;
+    my ($name, $signal, $function, $data) = @_;
+    my $id;
+    # is it the window itself?
+    if ($name eq $self->{name}) {
+        $id = $self->{ref}->signal_connect($signal, $function, $data);
+        # add id for removing in handler hash
+        $self->{handler}->{$signal} = $id;
+    # or the others?
+    } else {
+        my $object = $self->get_object($name);
+        if ($object->{type} eq 'NotebookPage' and $signal eq 'query_tooltip') {
+            $id = $object->{pagelabel}->signal_connect($signal, $function, $data);
+        }
+        elsif ($object->{type} eq 'DrawingArea') {
+            $id = $object->{drawing_area}->signal_connect($signal, $function, $data);
+        }
+        elsif ($object->{type} =~ /List|Tree/) {
+            $id = $object->{treeview}->signal_connect($signal, $function, $data);
+        }
+        else {
+            $id = $object->{ref}->signal_connect($signal, $function, $data);
+        }
+        $object->{handler}->{$signal} = $id;
+    }
+}
+
+# ---------------------------------------------------------------------
+# remove signal handler from widget
+# remove_signal_handler(<name>, <signal>)
+# ---------------------------------------------------------------------
+sub remove_signal_handler($@) {
+    my $self = shift;
+    my ($name, $signal) = @_;
+    
+    my $object = $self->get_object($name);
+    my $id = $object->{handler}->{$signal};
+    
+    $object->{ref}->signal_handler_disconnect($id);
+    delete $object->{handler}->{$signal};
+}
+
+
+# ---------------------------------------------------------------------
+# get object hash from objects list
+# get_object(<name_or_widget>)
+# ---------------------------------------------------------------------
+sub get_object($$) {
+    my $self = shift;
+    my $identifier = shift;
+    my $object = undef;
+    if (ref($identifier) =~ m/^Gtk2::/) {
+        my $entry = 'ref';
+        if (ref($identifier) =~ m/^Gtk2::DrawingArea/) {
+            $entry = 'drawing_area';
+        }
+        foreach (keys %{$self->{objects}}) {
+            if (defined($self->{objects}->{$_}->{$entry})) {
+                if ($self->{objects}->{$_}->{$entry} == $identifier) {
+                    $object = $self->{objects}->{$_};
+                }
+            }
+        }
+    } else {
+        $object = $self->{objects}->{$identifier};
+    }
+    $self->internal_die($identifier, "No object found!") unless defined($object);
+    return $object;
+}
+
+# ---------------------------------------------------------------------
+# check if object xyz exist. Return 1 if true else 0
+# exist_object(<name_or_widget>)
+# ---------------------------------------------------------------------
+sub exist_object($$) {
+    my $self = shift;
+    my $identifier = shift;
+    my $exist = 0;
+    if (ref($identifier) =~ m/^Gtk2::/) {
+        foreach (keys %{$self->{objects}}) {
+            if (ref($self->{objects}->{$_}->{ref}) eq ref($identifier)) {
+                $exist = 1;
+            }
+        }
+    } else {
+        if (defined($self->{objects}->{$identifier})) {
+            $exist = 1;
+        }
+    }
+    return $exist;
+}
+
+
+# ---------------------------------------------------------------------
+# get widget reference
+# get_widget(<name>)    <= must be unique
+# ---------------------------------------------------------------------
+sub get_widget($$) {
+    my $self = shift;
+    my $name = shift;
+    return $self->{objects}->{$name}->{ref};
+}
+
+
+# ---------------------------------------------------------------------
+# hide a widget
+# hide_widget(<name>)
+# ---------------------------------------------------------------------
+sub hide_widget($$) {
+    my $self = shift;
+    my $name = shift;
+
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
+        $object->{ref}->hide();
+    } else {
+        $self->show_error($object, "For \"$type\" use set_sensitive() instead.");
+        return;
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# show a widget
+# show_widget(<name>)
+# ---------------------------------------------------------------------
+sub show_widget($$) {
+    my $self = shift;
+    my $name = shift;
+
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
+        $object->{ref}->show();
+    } else {
+        $self->show_error($object, "For \"$type\" use set_sensitive() instead.");
+        return;
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# get sensitive state
+# is_sensitive(<name>)
+# ---------------------------------------------------------------------
+sub is_sensitive($@) {
+    my $self = shift;
+    my $name = @_;
+    
+    # get widget
+    my $widget = $self->get_widget($name);
+    
+    return $widget->is_sensitive();
+}
+
+
+# ---------------------------------------------------------------------
+# set sensitivity of a widget or a radio button group
+# set_sensitive(<name/group>, <state>)
+# ---------------------------------------------------------------------
+sub set_sensitive($@) {
+    my $self = shift;
+    my ($name, $state) = @_;
+    my $widget;
+    
+    # check if it is a widget or a group
+    if (exists $self->{objects}->{$name}) {
+        # get widget object
+        my $object = $self->get_object($name);
+        
+        if ($object->{type} eq 'Menu') {
+            $object->{title_item}->set_sensitive($state);
+        }
+        elsif ($object->{type} eq 'NotebookPage') {
+            # set the viewport instead of the scrolled window sensitive
+            # to let the scrollbars active
+            $object->{viewport}->set_sensitive($state);
+            # set sentivity of the label, too
+            $object->{pagelabel}->set_sensitive($state);
+        } else {
+            $object->{ref}->set_sensitive($state);
+        }
+    } else {
+        if (exists $self->{groups}->{$name}) {
+            $widget = $self->get_widget($self->{groups}->{$name}[0]);
+            my $group = $widget->get_group();
+            foreach (@$group) {
+                $_->set_sensitive($state);
+            }
+        } else {
+            $self->internal_die("$name not found - neither in objects nor in groups list!");
+        }
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# get the title of a widget
+# TODO: Perhaps it has to changed to widget specific get functions
+# get_title(<name>)
+# ---------------------------------------------------------------------
+sub get_title($$) {
+    my $self = shift;
+    my $name = shift;
+    
+    # get object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    my $title = $object->{title};
+    
+    if ($type eq 'ComboBox'){
+        my $index = $object->{ref}->get_active();
+        unless ($index == -1) {
+            $title = $object->{data}[$index]
+        }
+    }
+    elsif ($type =~ /^(Slider|ScrollBar|Image|TextView|MenuBar|Notebook$)/){
+        $self->show_error($object, "\"$type\" hasn't a title!");
+        return undef;
+    }
+    return $title;
+}
+
+
+# ---------------------------------------------------------------------
+# set title of a widget
+# set_title(<name>, <new_title>)
+# ---------------------------------------------------------------------
+sub set_title($@) {
+    my $self = shift;
+    my ($name, $new_title) = @_;
+    
+    # get widget object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    # change title in widget
+    if ($type =~ m/(^|k|o)Button$|^Frame|^Label/) {
+        $object->{ref}->set_label($new_title);
+    }
+    elsif ($type =~ m/^Entry/) {
+        $object->{ref}->set_text($new_title);
+    }
+    elsif ($type =~ m/^ComboBox/) {
+        my @array = $object->{data};
+        my $index = grep {$array[$_] =~ /^$new_title/} 0..$#array;
+        unless ($index > 0) {
+            $object->{ref}->set_active($index);
+        } else {
+            $self->show_error($object, "Can't set title \"$new_title\" - not found!");
+            return;
+        }
+    }
+    elsif ($type =~ m/^Menu|^Font/){
+        $object->{ref}->set_title($new_title);
+    }
+    elsif ($type eq 'NotebookPage'){
+        $object->{pagelabel}->set_label($new_title);
+        # update menu if active
+        my $nb_object = $self->get_object($object->{notebook});
+        # workaround - not fine but works ;-)
+        if ($nb_object->{popup}) {
+            $nb_object->{ref}->popup_disable();
+            $nb_object->{ref}->popup_enable();
+        }
+    }
+    else {
+        $self->show_error($object, "Can't set title \"$new_title\" - wrong type \"$type\"!");
+        return;
+    }
+    
+    # update title in object
+    $object->{title} = $new_title;
+}
+
+
+# ---------------------------------------------------------------------
+# get size of a widget
+# get_size(<name>)
+# ---------------------------------------------------------------------
+sub get_size($$) {
+    my $self = shift;
+    my $name = shift;
+
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
+        return ($object->{width}, $object->{height})
+    } else {
+        $self->show_error($object, "For \"$type\" no size avaliable!");
+        return;
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set size of a widget
+# set_size(<name>, <new_width>, <new_height>)
+# ---------------------------------------------------------------------
+sub set_size($@) {
+    my $self = shift;
+    my ($name, $width, $height) = @_;
+    
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    unless ($type =~ m/^(Check|Radio|Label|Image|MenuItem|Menu$|NotebookPage)/) {
+        $object->{ref}->set_size_request($width, $height);
+    }
+    elsif ($type =~ m/^Image/) {
+        # scale pixbuf and create a new image
+        my $scaled = $object->{pixbuf}->scale_simple($width, $height, 'bilinear');
+        my $new_image = Gtk2::Image->new_from_pixbuf($scaled);
+        
+        # get old image and remove it from eventbox
+        my $old_image = $object->{image};
+        $object->{ref}->remove($old_image);
+        
+        # add new image to eventbox
+        $object->{ref}->add($new_image);
+        
+        # and resize the eventbox to fit the bigger/smaller image 
+        $object->{ref}->set_size_request($width, $height);
+        
+        # exchange the old with the new image reference
+        $object->{image} = $new_image;
+        
+        # and show it
+        $new_image->show();
+    }
+    else {
+        $self->show_error($object, "\"$type\" isn't resizable!");
+        return;
+    }
+
+    # update object
+    $object->{width} = $width;
+    $object->{height} = $height;
+}
+
+
+# ---------------------------------------------------------------------
+# get position of a widget
+# get_pos(<name>)
+# ---------------------------------------------------------------------
+sub get_pos($$) {
+    my $self = shift;
+    my $name = shift;
+    
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
+        return ($object->{pos_x}, $object->{pos_x})
+    } else {
+        $self->show_error($object, "For \"$type\" no position avaliable!");
+        return;
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set position of a widget
+# set_pos(<name>, <new_x>, <new_y>)
+# ---------------------------------------------------------------------
+sub set_pos($@) {
+    my $self = shift;
+    my ($name, $pos_x, $pos_y) = @_;
+
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
+        if (defined($object->{container})) {
+            my $container = $self->get_container($object->{container});
+            my $frame = $self->get_object($object->{container});
+                
+            # calculate position
+            my ($x, $y) = $self->_get_pos_in_frame($object->{container}, $pos_x, $pos_y);
+            
+            $container->move($object->{ref}, $x, $y);
+        } else {
+            $self->{container}->move($object->{ref}, $pos_x, $pos_y);
+        }
+    
+        # update object
+        $object->{$pos_x} = $pos_x;
+        $object->{$pos_y} = $pos_y;
+    } else {
+        $self->show_error($object, "\"$type\" cannot change the position!");
+        return;
+    }
+
+}
+
+
+# ---------------------------------------------------------------------
+# get active state of Check- and RadioButtons. Also from GtkSpinner
+# is_active(<name>)
+# get state whether a given value/string is current active in a combobox
+# is_active(<name>, <value>)
+# ---------------------------------------------------------------------
+sub is_active($@) {
+    my $self = shift;
+    my ($name, $value) = @_;
+    
+    # get object and type
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+    my $rc = 0;
+    
+    # only these types has an active state
+    if ($type =~ m/^(CheckButton|RadioButton)/) {
+        $rc = $object->{ref}->get_active();
+        $rc = 0 if $rc eq ''; # get_active() provides '' on uncheck
+    }
+    elsif ($type eq 'ComboBox'){
+        my $current = $object->{ref}->get_active();
+        unless ($current == -1) {
+            # number?
+            if ($value =~ /^\d+?$/) {
+                if ($value == $object->{data}[$current]) {
+                    $rc = 1;
+                }
+            # string
+            } else {
+                if ($value eq $object->{data}[$current]) {
+                    $rc = 1;
+                }
+            }
+        }
+    }
+    else {
+        $self->show_error($object, "\"$type\" hasn't an active state!");
+   } 
+   return $rc;
+}
+
+
+# ---------------------------------------------------------------------
+# has text an underline?
+# is_underlined(<text>)
+# ---------------------------------------------------------------------
+sub is_underlined($@) {
+    my $self = shift;
+    my $text = shift;
+    
+    # remove double underlines
+    $text =~ s/__//;
+    
+    my $underlined = $text =~ /_/ ? 1 : 0;
+    return $underlined;
+#   return ($text =~ /_/ ? 1 : 0); <= the same ^^
+}
+
+
+# ---------------------------------------------------------------------
+# get_value(<name>, <keyname> | <keyname> => <value>)
+# ---------------------------------------------------------------------
+sub get_value($@) {
+    my $self = shift;
+    my $name = shift;
+    my @key_value = @_;
+    my $key = $key_value[0];
+    $key = _extend(lc($key)) if defined($key);
+    my $value = 'Error';
+    
+    # get widget object
+    my $object = $self->get_object($name);
+
+    # Check and Radio button
+    if ($object->{type} =~ /^(Check|Radio)/) {
+        if    ($key eq 'active') {$value = $object->{ref}->is_active();}
+    }
+    
+    # Link button
+    elsif ($object->{type} eq 'LinkButton') {
+        # get uri
+        if    ($key eq 'uri') {$value = $object->{ref}->get_uri();}
+    }
+    
+    # Label
+    elsif ($object->{type} eq 'Label') {
+        # line wrap
+        if    ($key eq 'wrapped') {$value = $object->{ref}->get_line_wrap();}
+        # justification of label
+        elsif ($key eq 'justify') {$value = $object->{ref}->get_justify();}
+    }
+    
+    # Text entry
+    elsif ($object->{type} eq 'entry') {
+        # alignment
+        if    ($key eq 'align') {$value = $object->{ref}->get_alignment();}
+    }
+    
+    # Spin button
+    elsif ($object->{type} eq 'SpinButton') {
+        # alignment of values
+        if    ($key eq 'align') {$value = $object->{ref}->get_alignment();}
+        # minimum value
+        elsif ($key eq 'minimum') {$value = $object->{adjustment}->lower();}
+        # maximum value
+        elsif ($key eq 'maximum') {$value = $object->{adjustment}->upper();}
+        # steps
+        elsif ($key eq 'step') {$value = $object->{adjustment}->step_increment();}
+        # start/active value
+        elsif ($key eq 'active') {$value = $object->{ref}->get_value();}
+        # digits
+        elsif ($key eq 'digits') {$value = $object->{ref}->get_digits();}
+        # climbrate
+        elsif ($key eq 'climbrate') {$value = $object->{climbrate};}
+        # snap to ticks
+        elsif ($key eq 'snap') {$value = $object->{ref}->get_snap_to_ticks();}
+    }
+    
+    # Combo box
+    elsif ($object->{type} eq 'ComboBox') {
+        # index of active value, else -1
+        if    ($key eq 'active') {$value = $object->{ref}->get_active();}
+        # columns
+        elsif ($key eq 'columns') {$value = $object->{ref}->get_wrap_width();}
+        # data array
+        elsif ($key eq 'data') {$value = $object->{data};}
+    }
+
+    # Slider and Scroll bar
+    elsif ($object->{type} =~ /^(Slider|Scrollbar)/) {
+        # minimum value
+        if    ($key eq 'minimum') {$value = $object->{adjustment}->lower();}
+        # maximum value
+        elsif ($key eq 'maximum') {$value = $object->{adjustment}->upper();}
+        # steps
+        elsif ($key eq 'step') {$value = $object->{adjustment}->step_increment();}
+        # start/active value
+        elsif ($key eq 'active') {$value = $object->{adjustment}->value();}
+        # digits
+        elsif ($key eq 'digits') {$value = $object->{ref}->get_digits();}
+        
+        if ($object->{type} eq 'Slider') {
+            # draw value
+            if    ($key eq 'drawvalue') {$value = $object->{ref}->get_draw_value();}
+            # digits of value
+            elsif ($key eq 'digits') {$value = $object->{ref}->get_digits();}
+            # position of the draw value
+            elsif ($key eq 'valueposition') {$value = $object->{ref}->get_value_pos();}
+        }
+    }
+    
+    # Image
+    elsif ($object->{type} eq 'Image') {
+        # not supported
+        $self->internal_die($object, "'get_value' doesn't support \"$key\". Use 'get_image' instead.");
+    }
+    
+    # Text view
+    elsif ($object->{type} eq 'TextView') {
+        # get margins
+        if ($key eq 'leftmargin') {$value = $object->{textview}->get_left_margin();}
+        elsif ($key eq 'rightmargin') {$value = $object->{textview}->get_right_margin();}
+        # get wrap mode
+        elsif ($key eq 'wrapped') {$value = $object->{textview}->get_wrap_mode();}
+        # get justification
+        elsif ($key eq 'justify') {$value = $object->{textview}->get_justification();}
+        # not supported
+        elsif ($key =~ /^(path|textbuffer)/) {
+            $self->internal_die($object, "'get_value' doesn't support \"$key\". Use 'get_textview' instead.");
+        }
+    }
+    
+    # Menu
+    elsif ($object->{type} eq 'Menu') {
+        # get justification
+        if ($key eq 'justify') {$value = $object->{title_item}->get_right_justified() == 1 ? 'right' : 'left';}
+    }
+    
+    # Menu item
+    elsif ($object->{type} eq 'MenuItem') {
+        # get icon path
+        if ($key =~ /icon/) {
+            my $icon = $object->{icon};
+            my $match = 0;
+
+            if (defined($icon)) {
+                # general
+                if ($key eq 'icon') {$match = 1;}
+                # stock icon?
+                elsif ($icon =~ /^gtk-/ and $key eq 'stockicon') {$match = 1;}
+                # path ?
+                elsif (-e $icon and $key eq 'iconpath') {$match = 1;}
+                # name
+                elsif ($key eq 'iconname') {$match = 1;}
+            }
+            
+            unless ($match) {$icon = undef;}
+            
+            return $icon;
+        }
+    }
+    
+    # Notebook
+    elsif ($object->{type} eq 'Notebook') {
+        # get current page
+        if ($key eq 'currentpage') {$value = $object->{ref}->get_current_page();}
+        # get count of pages
+        elsif ($key eq 'pages') {$value = $object->{ref}->get_n_pages();}
+        # popup active?
+        elsif ($key eq 'popup') {$value = $object->{popup};}
+        # get page number with page name
+        elsif ($key eq 'name2number') {
+            # get count of pages
+            my $pages = $object->{ref}->get_n_pages();
+            my $i = 0;
+            while ($i < $pages) {
+                # get page widget
+                my $page = $object->{ref}->get_nth_page($i);
+                my $page_object = $self->get_object($page);
+                if ($page_object->{name} eq $key_value[1]) {
+                    $value = $i;
+                    last;
+                }
+                $i += 1;
+            }
+        }
+        # get page name with number
+        elsif ($key eq 'number2name') {
+            # get page widget
+            my $page = $object->{ref}->get_nth_page($key_value[1]);
+            my $page_object = $self->get_object($page);
+            $value = $page_object->{name};
+        }
+        # get page number with page title
+        elsif ($key eq 'title2number') {
+            # get count of pages
+            my $pages = $object->{ref}->get_n_pages();
+            my $i = 0;
+            while ($i < $pages) {
+                # get page widget
+                my $page = $object->{ref}->get_nth_page($i);
+                my $page_object = $self->get_object($page);
+                if ($page_object->{title} eq $key_value[1]) {
+                    $value = $i;
+                    last;
+                }
+                $i += 1;
+            }
+        }
+        elsif ($key eq 'number2title') {
+            # get page widget
+            my $page = $object->{ref}->get_nth_page($key_value[1]);
+            my $page_object = $self->get_object($page);
+            $value = $page_object->{title};
+        }
+        # is scrollbar active?
+        elsif ($key eq 'scrollable') {$value = $object->{ref}->get_scrollable();}
+        # tabs shown or position
+        elsif ($key eq 'tabs') {
+            if ($object->{ref}->get_show_tabs()) {
+                $value = $object->{ref}->get_tab_pos();
+            } else {
+                $value = 'none';
+            }
+        }
+        elsif ($key =~ /^(pagenumber|notebook)/) {
+            $self->internal_die($object, "Parameter \"$key\" used with type 'NotebookPage' only.");
+        }
+    }
+    
+    # Notebook page
+    elsif ($object->{type} eq 'NotebookPage') {
+        # get number with page name
+        if ($key eq 'pagenumber') {$value = $object->{notebook}->page_num($object->{ref});}
+        # get allocated notebook name
+        elsif ($key eq 'notebook') {
+            my $nb_object = $self->get_object($object->{notebook});
+            $value = $nb_object->{name};
+        }
+        elsif ($key =~ /^(scrollable|currentpage|pagination|no2name|tabs|popup)/) {
+            $self->internal_die($object, "Parameter \"$key\" used with type 'Notebook' only.");
+        }
+    }
+
+    # Font button and Font selection dialog
+    elsif ($object->{type} =~ /^(FontButton|FontSelectionDialog)/) {
+        # first get complete font as string from object
+        my $font = $object->{font};
+        # get preview string
+        if ($key eq 'previewstring' and $object->{type} eq 'FontSelectionDialog') {
+            $value = $object->{preview};
+        }
+        # get font string
+        elsif ($key eq 'fontstring') {
+            $value = $font;
+        } else {
+            my @fontarray = [undef, undef, undef];
+            my $fontdescription = Pango::FontDescription->from_string($font);
+            my $family = $fontdescription->get_family();
+            # get font family
+            if ($key eq 'fontfamily') {
+                $value = $family;
+            } else {
+                $fontarray[0] = $family;
+                # remove family
+                $font =~ s/$family//;
+                $font =~ s/, //;
+                # get font size
+                my @rest = split(" ",$font);
+                my $size = pop(@rest);
+                if ($key eq 'fontsize') {
+                    $value = $size;
+                } else {
+                    $fontarray[1] = $size;
+                    # get weight
+                    if ($key eq 'fontweight') {
+                        my $value = join(" ",@rest);
+                    } else {
+                        # complete font as array
+                        $fontarray[2] = join(" ",@rest);
+                        my $value = @fontarray;
+                    }
+                }
+            }
+        }
+    }
+
+    # Status bar
+    elsif ($object->{type} eq 'Statusbar') {
+        if ($key eq 'message') {
+            my @value;
+            # get the text of the message-id
+            if (looks_like_number($key_value[1])) {
+                foreach my $i (0..$#{$object->{sbar_stack}}) {
+                    foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+                        if ($key == $key_value[1]) {
+                            $value = $object->{sbar_stack}[$i]{$key};
+                            last;
+                        }
+                    }
+                }
+            # get last message
+            } else {
+                @value = values(%{$object->{sbar_stack}[-1]});
+                $value = $value[0];
+            }
+        }
+        # get message id of the text
+        elsif ($key eq 'msgid') {
+            unless ($key_value[1] eq 'last') {
+                foreach my $href (@{$object->{sbar_stack}}) {
+                    foreach my $key (keys %{$href}) {
+                         if ($href->{$key} eq $key_value[1]) {
+                             $value = $key;
+                             last;
+                         }
+                    }
+                }
+            # get last message id
+            } else {
+                my @last = keys (%{$object->{sbar_stack}[-1]});
+                $value = $last[0];
+            }
+        }
+        # get stack reference
+        elsif ($key eq 'stackref') {
+            $value = $object->{sbar_stack};
+        }
+        elsif ($key eq 'stackcount') {
+            $value = scalar @{$object->{sbar_stack}};
+        }
+    }
+
+    # List
+    elsif ($object->{type} eq 'List') {
+        if ($key eq 'editable') {
+            $value = $object->{treeview}->get_column_editable($key_value[1]);
+        }
+        elsif ($key eq 'path') {
+            if (ref($key_value[1]) eq 'ARRAY') {
+                my @path_array;
+                foreach (@{$key_value[1]}) {
+                    push(@path_array, $object->{list}->{data}[$_]);
+                }
+                $value = \@path_array;
+            } else {
+                my $val = $key_value[1];
+                $value = $object->{treeview}->{data}[$val];
+            }
+        }
+        elsif ($key eq 'cell') {
+            my ($n, $m) = ($key_value[1][0], $key_value[1][1]);
+            $value = $object->{treeview}->{data}[$n][$m];
+        }
+    }
+
+    # Tree
+    elsif ($object->{type} eq 'Tree') {
+        my $treeselection = $object->{treeview}->get_selection();
+        my ($model, $iter) = $treeselection->get_selected();
+        if ($key eq 'iter') {
+            return $iter; # because of undef
+        }
+        elsif ($key eq 'path') {
+            # current selection
+            unless (defined($key_value[1])) {
+                $value = $model->get_path($iter);
+            } else {
+                $value = $model->get_path($key_value[1]);
+            }
+        }
+        elsif ($key eq 'row') {
+            my @row_array = $model->get($iter);
+            $value = \@row_array;
+        }
+
+    }
+
+
+    unless ($value eq 'Error') {
+        return $value;
+    } else {
+        $self->internal_die($object, "Unknown parameter \"$key\".");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set_value(<name>, Value/MaxValue/MinValue => <new_value>)
+# ---------------------------------------------------------------------
+sub set_value($@) {
+    my $self = shift;
+    my $name = shift;
+    my %params = @_;
+
+    unless (scalar(keys %params) > 1) {
+        $self->set_values($name, %params);
+    } else {
+        $self->internal_die("Too much parameters! Use 'set_values' instead.");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set_values(<name>, Value_x => <new_value>, Value_y => <new_value>, ...)
+# ---------------------------------------------------------------------
+sub set_values($@) {
+    my $self = shift;
+    my $name = shift;
+    my %params = $self->_normalize(@_);
+    
+    my $object = $self->get_object($name);
+
+    if ($object->{type} =~ /^(CheckButton|RadioButton)/) {
+        if (defined($params{'active'})) {
+            $object->{ref}->set_active($params{'active'});
+            delete $params{'active'};
+        }
+    }
+
+    if ($object->{type} eq 'LinkButton') {
+        if (defined($params{'uri'})) {
+            $object->{ref}->set_uri($params{'uri'});
+            delete $params{'uri'};
+        }
+    }
+    
+    if ($object->{type} eq 'Label') {
+        if (defined($params{'wrapped'})) {
+            $object->{ref}->set_line_wrap($params{'wrapped'});
+            delete $params{'wrapped'};
+        }
+        if (defined($params{'justify'})) {
+            $object->{ref}->set_justify($params{'justify'});
+            delete $params{'justify'};
+        }
+    }
+    
+    if ($object->{type} =~ /^(Entry|SpinButton)/ and defined($params{'align'})) {
+        # set alignment of values
+        ($params{'align'} eq 'right') ? $object->{ref}->set_alignment(1) : $object->{ref}->set_alignment(0);
+        delete $params{'align'};
+    }
+    
+    if ($object->{type} =~ /^(Slider|Scrollbar|SpinButton)/) {
+        my $reconfigure = 0;
+        my $digits;
+        my $climbrate;
+        
+        if ($object->{type} eq 'SpinButton') {
+            $digits = $object->{ref}->get_digits();
+            $climbrate = $object->{climbrate};
+        }
+        
+        # set minimum value
+        if (defined($params{'minimum'})) {
+            $object->{adjustment}->lower($params{'minimum'});
+            $reconfigure = 1;
+            delete $params{'minimum'};
+        }
+        # set maximum value
+        if (defined($params{'maximum'})) {
+            $object->{adjustment}->upper($params{'maximum'});
+            $reconfigure = 1;
+            delete $params{'maximum'};
+        }
+        # set steps
+        if (defined($params{'step'})) {
+            $object->{adjustment}->step_increment($params{'step'});
+            $reconfigure = 1;
+            delete $params{'step'};
+        }
+        # set pages
+        if (defined($params{'page'})) {
+            $object->{adjustment}->page_increment($params{'page'});
+            $reconfigure = 1;
+            delete $params{'page'};
+        }
+        # set start value
+        if (defined($params{'start'})) {
+            $object->{adjustment}->value($params{'start'});
+            $reconfigure = 1;
+            delete $params{'start'};
+        }
+        # set active value
+        if (defined($params{'active'})) {
+            $object->{ref}->set_value($params{'active'});
+            delete $params{'active'};
+        }
+        
+        if ($object->{type} eq 'SpinButton') {
+            # set snap to ticks
+            if (defined($params{'snap'})) {
+                $object->{ref}->set_snap_to_ticks($params{'snap'});
+                delete $params{'snap'};
+            }
+#            # set digits
+#            if (defined($params{'digits'}) and $reconfigure) {
+#                $digits = $params{'digits'};
+#            } else {
+#               print "params{'digits'}: '$params{'digits'}'";
+#               print "reconfigure: '$reconfigure'";
+#                $object->{ref}->set_digits($params{'digits'}) unless $reconfigure;
+#            }
+#            delete $params{'digits'} if defined($params{'digits'});
+
+#            # set climbrate
+#            if (defined($params{'climbrate'}) and $reconfigure) {
+#                $climbrate = $params{'climbrate'};
+#            } else {
+#                $reconfigure = 1 unless defined($params{'climbrate'});
+#            }
+#            delete $params{'climbrate'} if defined($params{'climbrate'});
+
+            # set digits
+            if (defined($params{'digits'})) {
+                if ($reconfigure) {
+                    $digits = $params{'digits'};
+                } else {
+#                   print "params{'digits'}: '$params{'digits'}'";
+#                   print "reconfigure: '$reconfigure'";
+                    $object->{ref}->set_digits($params{'digits'});
+                }
+                delete $params{'digits'};
+            }
+            # set climbrate
+            if (defined($params{'climbrate'})) {
+                if ($reconfigure) {
+                    $climbrate = $params{'climbrate'};
+                } else {
+                    $reconfigure = 1;
+                }
+                delete $params{'climbrate'};
+            }
+
+            # reconfigure SpinButton if needed
+            if ($reconfigure) {
+                $object->{ref}->configure($object->{adjustment}, $climbrate, $digits);
+            }
+        }
+        elsif ($object->{type} =~ /^(Slider|Scrollbar)/) {
+            if ($object->{type} eq 'Slider') {
+                # value drawing?
+                if (defined($params{'drawvalue'})) {
+                    $object->{ref}->set_draw_value($params{'drawvalue'});
+                    delete $params{'drawvalue'};
+                }
+                # digits of value
+                if (defined($params{'digits'})) {
+                    $object->{ref}->set_digits($params{'digits'});
+                    delete $params{'digits'};
+                }
+                # position of the value
+                if (defined($params{'valueposition'})) {
+                    $object->{ref}->set_value_pos($params{'valueposition'});
+                    delete $params{'valueposition'};
+                }
+            }
+            
+            if ($reconfigure) {
+                Glib::Object->signal_emit($object->{adjustment}, "changed");
+            }
+        }
+    }
+    
+    if ($object->{type} eq 'ComboBox'){
+        # index of active value
+        if (defined($params{'active'})) {
+            $object->{ref}->set_active($params{'active'});
+            delete $params{'active'};
+        }
+        if (defined($params{'columns'})) {
+            $object->{ref}->set_wrap_width($params{'columns'});
+            delete $params{'columns'};
+        }
+        if (defined($params{'data'})) {
+            # exchange old data in object with new one
+            $object->{data} = $params{'data'};
+            delete $params{'data'};
+            
+            # remove all rows in liststore object
+            my $model = $object->{ref}->get_model();
+            $model->clear();
+            
+            # add new data to ListStore object
+            foreach(@{$object->{data}}) {
+                my $iter = $model->append;
+                $model->set($iter,0 => _($_));
+            }
+            
+            # check if there's a $params{'start'}
+            my $start = defined($params{'start'}) ? $params{'start'} : 0;
+            delete $params{'start'} if defined($params{'start'});
+            
+            # set active item
+            $object->{ref}->set_active($start);
+        }
+    }
+    
+    if ($object->{type} eq 'TextView'){
+        # set margins
+        if (defined($params{'leftmargin'})) {
+            $object->{textview}->set_left_margin($params{'leftmargin'});
+            delete $params{'leftmargin'};
+        }
+        if (defined($params{'rightmargin'})) {
+            $object->{textview}->set_right_margin($params{'rightmargin'});
+            delete $params{'rightmargin'};
+        }
+        # set wrap mode
+        if (defined($params{'wrapped'})) {
+            $object->{textview}->set_wrap_mode($params{'wrapped'});
+            delete $params{'wrapped'};
+        }
+        # set justification
+        if (defined($params{'justify'})) {
+            $object->{textview}->set_justification($params{'justify'});
+            delete $params{'justify'};
+        }
+    }
+    
+    if ($object->{type} eq 'Menu') {
+        # set justification
+        if (defined($params{'justify'})) {
+            my $justify = $params{'justify'} eq 'right' ? 1 : 0;
+            $object->{title_item}->set_right_justified($justify);
+            delete $params{'justify'};
+        }
+
+    }
+
+    if ($object->{type} eq 'MenuItem') {
+        # set icon
+        if (defined($params{'icon'})) {
+            my $icon = $object->{icon};
+            # first check which icon is suggested
+            my $image;
+            if (defined($icon)) {
+                # stock icon?
+                if ($icon =~ /^gtk-/) {
+                    $image = Gtk2::Image->new_from_stock($icon, 'menu')
+                } else {
+                    # path or theme icon name?
+                    if (-e $icon) {
+                        $image = Gtk2::Image->new_from_file($icon);
+                    } else {
+                        $image = Gtk2::Image->new_from_icon_name($icon, 'menu');
+                    }
+                    $object->{ref}->set_image($image);
+                }
+            } else {
+                $self->internal_die($object, "\"$object->{type}\" hasn't an icon!");
+            }
+            delete $params{'icon'};
+        }
+    }
+
+    if ($object->{type} eq 'Notebook'){
+        # set current page
+        if (defined($params{'currentpage'})) {
+            if ($params{'currentpage'} eq 'next') {
+                $object->{ref}->next_page();
+            } 
+            elsif($params{'currentpage'} =~ /^prev/) {
+                $object->{ref}->prev_page();
+            }
+            else {
+                $object->{ref}->set_current_page($params{'currentpage'});
+            }
+            delete $params{'currentpage'};
+        }
+        # set popup
+        if (defined($params{'popup'})) {
+            if ($params{'popup'}) {
+                $object->{ref}->popup_enable();
+            } else {
+                $object->{ref}->popup_disable();
+            }
+            # update object
+            $object->{popup} = $params{'popup'};
+            delete $params{'popup'};
+        }
+        # set scrollable
+        if (defined($params{'scrollable'})) {
+            $object->{ref}->set_scrollable($params{'scrollable'});
+            delete $params{'scrollable'};
+        }
+        # show tabs
+        if (defined($params{'showtabs'})) {
+            $object->{ref}->set_show_tabs($params{'showtabs'});
+            delete $params{'showtabs'};
+        }
+        # tabs ()show/hide and position)
+        if (defined($params{'tabs'})) {
+            unless ($params{'tabs'} eq 'none') {
+                $object->{ref}->set_show_tabs(1);
+                $object->{ref}->set_tab_pos($params{'tabs'});
+            } else {
+                $object->{ref}->set_show_tabs(0);
+            }
+            delete $params{'tabs'};
+        }
+    }
+    
+    if ($object->{type} eq 'NotebookPage'){
+        # reorder the page to position x
+        if (defined($params{'reorder'})) {
+            $object->{notebook}->reorder_child($object->{ref}, $params{'reorder'});
+            delete $params{'reorder'};
+        }
+    }
+
+    if ($object->{type} =~ /^(FontButton|FontSelectionDialog)/) {
+        # set preview text
+        if (defined($params{'preview'}) and $object->{type} eq 'FontSelectionDialog') {
+            $object->{ref}->set_preview_text($params{'preview'});
+            $object->{preview} = $params{'preview'};
+            delete $params{'preview'};
+        }
+        # set full fontname
+        if (defined($params{'font'})) {
+            if (ref($params{'font'}) eq 'ARRAY') {
+                $object->{font} = scalar(@{$params{'font'}}) == 2 ? join(" ", @{$params{'font'}}) : "$params{'font'}[0] $params{'font'}[2] $params{'font'}[1]";
+            } else {
+                $object->{font} = $params{'font'};
+            }
+            if ($object->{type} eq 'FontButton'){
+                $object->{ref}->set_font_name ($object->{font});
+            }
+            delete $params{'font'};
+        }
+        my @fontarray = $self->get_font_array($object->{font});
+        # set only font family
+        if (defined($params{'fontfamily'})) {
+            $fontarray[0] = $params{'fontfamily'};
+            delete $params{'fontfamily'};
+        }
+        # set only font size
+        if (defined($params{'fontsize'})) {
+            $fontarray[1] = $params{'fontsize'};
+            delete $params{'fontsize'};
+        }
+        # set only font weight
+        if (defined($params{'fontweight'})) {
+            $fontarray[2] = $params{'fontweight'};
+            delete $params{'fontweight'};
+        }
+        # update object and reference
+        $object->{font} = "$fontarray[0] $fontarray[2] $fontarray[1]";
+        if ($object->{type} eq 'FontButton'){
+            $object->{ref}->set_font_name ($object->{font});
+        }
+    }
+
+    if ($object->{type} =~ /List|Tree/){
+        if (defined($params{'data'})) {
+            $object->{treeview}->set_data_array($params{'data'});
+            $object->{data} = $object->{treeview}->{data};
+            delete $params{'data'};
+        }
+
+        # set selection mode
+        if (defined($params{'mode'})) {
+            my $treeselection = $object->{treeview}->get_selection();
+            $treeselection->set_mode($params{'mode'});
+            delete $params{'mode'};
+        }
+
+        # set a column sortable
+        if (defined($params{'sortable'})) {
+            my $treecolumn = $object->{treeview}->get_column($params{'sortable'});
+            $treecolumn->set_sort_column_id($params{'sortable'});
+            delete $params{'sortable'};
+        }
+
+        # set rows reordable
+        if (defined($params{'reordable'})) {
+            $object->{treeview}->set_reorderable($params{'reordable'});
+            delete $params{'reordable'};
+        }
+
+        if ($object->{type} eq 'List'){
+            if (defined($params{'select'})) {
+                unless (ref($params{'select'}) eq 'ARRAY') {
+                    $object->{list}->select($params{'select'});
+                } else {
+                    $object->{list}->select(join(',', $params{'select'}));
+                }
+                delete $params{'select'};
+            }
+            elsif (defined($params{'unselect'})) {
+                unless (ref($params{'unselect'}) eq 'ARRAY') {
+                    $object->{list}->unselect($params{'select'});
+                } else {
+                    $object->{list}->unselect(join(',', $params{'select'}));
+                }
+                delete $params{'unselect'};
+            }
+        }
+
+        if ($object->{type} eq 'Tree'){
+            
+        }
+    }
+
+
+    # if there remain(s) unknown parameter(s) 
+    if (scalar keys %params > 0) {
+        my $rest = join(", ", keys %params);
+        $self->internal_die($object, "Unknown parameter(s) \"$rest\".");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# get the current fontsize of a widget
+# get_fontsize(<widget>)
+# ---------------------------------------------------------------------
+sub get_fontsize($) {
+    my $widget = shift;
+    my $context = $widget->get_pango_context();
+    my $fontDesc = $context->get_font_description();
+    my $language = $context->get_language();
+    my $metrics = $context->get_metrics($fontDesc, $language);
+    my $char_widths = $metrics->get_approximate_char_width();
+    my $fontsize = $fontDesc->get_size();
+    my $pango_scale = Gtk2::Pango->scale();
+    my $char_scale = $char_widths/$pango_scale;
+    if ($fontsize > 200) {
+        $fontsize = $fontsize/$pango_scale ;
+    }
+    
+    return $fontsize;
+}
+
+
+# ---------------------------------------------------------------------
+# get the current font family of a widget
+# get_fontfamily(<widget>)
+# ---------------------------------------------------------------------
+sub get_fontfamily($) {
+    my $widget = shift;
+    my $context = $widget->get_pango_context();
+    my $fontDesc = $context->get_font_description();
+    my $fontfamily = $fontDesc->get_family();
+    return $fontfamily
+}
+
+# ---------------------------------------------------------------------
+# get the current font weight of a widget
+# get_fontweight(<widget>)
+# ---------------------------------------------------------------------
+sub get_fontweight($) {
+    my $widget = shift;
+    my $context = $widget->get_pango_context();
+    my $fontDesc = $context->get_font_description();
+    my @fontarray = &font_string_to_array($fontDesc->to_string());
+    unless (@fontarray = 3) {
+        return $fontarray[2];
+    } else {
+        return "";
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# get font from object
+# get_font_string(<name>)
+# ---------------------------------------------------------------------
+sub get_font_string($$) {
+    my $self = shift;
+    my $name = shift;
+
+    # get font object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+    my $font;
+    my $context;
+    if ($type =~ /^(FontButton|FontSelectionDialog)/) {
+        $font = $object->{ref}->get_font_name();
+    }
+    # unfortunately it's mostly not possible to get the current font with the
+    # widget holding the text. So we do it over the hash tag 'font'
+    elsif (defined($object->{font})) {
+        $font = $object->{font};
+    }
+    else {
+        $context = $self->{ref}->get_pango_context();
+        my $fontDesc = $context->get_font_description();
+        $font = $fontDesc->to_string();
+    }
+
+    unless ($font eq "") {
+        return $font;
+    } else {
+        $self->internal_die($object, "\"$type\" hasn't a font!");
+    }
+}
+
+# ---------------------------------------------------------------------
+# get font as array - font string split into array format
+# get_font_array(<name>)
+# ---------------------------------------------------------------------
+sub get_font_array($@) {
+    my $self = shift;
+    my $name = shift;
+
+    # get font object
+    my $object = $self->get_object($name);
+
+    my $font;
+    if ($object->{type} =~ /^(FontButton|FontSelectionDialog)/) {
+        $font = $object->{ref}->get_font_name();
+    } else {
+        $font = $self->get_font_string($name);
+    }
+
+    unless ($font eq "") {
+        my @fontarray = font_string_to_array($font);
+        return @fontarray;
+    } else {
+        $self->internal_die($object, "\"$object->{type}\" hasn't a font!");
+    }
+}
+
+# ---------------------------------------------------------------------
+# font_array_to_string <= Build from a font array a font string. 
+# Font family and size is requiered.
+# Array: [family, size, weight]
+# ---------------------------------------------------------------------
+sub font_array_to_string(@) {
+    my @font_array = @_;
+    my $font_string;
+    # check if comma is needed
+    my @pango_enums = ('condensed', 'expanded', 'oblique', 'italic', 'light', 'bold', 'heavy', 'roman');
+    # hope theses enums are enough :-/
+    my @family = split(' ', $font_array[0]);
+    foreach my $enums (@pango_enums) {
+        if (lc($family[-1])=~ /^$enums$/) {
+            $font_array[0] = $font_array[0] . ',';
+            last;
+        }
+    }
+    # now concatenate all
+    if (scalar(@font_array) == 2 ) {
+        $font_string = join(" ", @font_array);
+    } else {
+        $font_string = "$font_array[0] $font_array[2] $font_array[1]";
+    }
+    return $font_string;
+}
+
+
+# ---------------------------------------------------------------------
+# font_string_to_array <= Build from a font string a font array. 
+# Font family AND size is requiered.
+# ---------------------------------------------------------------------
+sub font_string_to_array {
+    my $font_string = shift;
+    my @fontarray = [undef, undef, undef];
+
+    my $fontdescription = Pango::FontDescription->from_string($font_string);
+    my $family = $fontdescription->get_family();
+    
+    # get font family
+    $fontarray[0] = $family;
+
+    # remove family
+    $font_string =~ s/$family//;
+    $font_string =~ s/, //;
+    
+    # get font size
+    my @rest = split(" ",$font_string);
+    my $size = pop(@rest);
+    $fontarray[1] = $size;
+
+    # get weight
+    $fontarray[2] = join(" ",@rest);
+    
+    return @fontarray;
+}
+
+
+# ---------------------------------------------------------------------
+# set_font(<name>, <font_string> | [family, size, weight] | Family => family, Size => size, Weight => weight)
+# ---------------------------------------------------------------------
+sub set_font($@) {
+    my $self = shift;
+    my $name = shift;
+    my %params;
+    my ($new_family, $new_size, $new_weight) = undef;
+    my $new_font_string = undef;
+    if (@_ == 1) {
+        my $reference = shift;
+        # is it a font array?
+        if (ref($reference) eq 'ARRAY') {
+            $new_family = $$reference[0];
+            $new_size = $$reference[1] if ($reference > 1);
+            $new_weight = $$reference[2] if ($reference > 2);
+        } else {
+            # is it a string?
+            $new_font_string = $reference;
+        }
+    } else {
+        %params = $self->_normalize(@_);
+        $new_family = $params{'family'} || undef;
+        $new_size = $params{'size'} || undef;
+        $new_weight = $params{'weight'} || undef;
+    }
+
+    # get widget object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+    # check if object has a text to change allready
+    if ($type =~ m/(^|k|o)Button$|^Frame|^Label|^Entry|^Text|^NotebookPage/) {
+        unless (defined($new_font_string)){
+            my $context;
+            if ($type =~ m/^Text/) {
+                $context = $object->{textview}->get_pango_context();
+            } else {
+                $context = $object->{ref}->get_pango_context();
+            }
+            my $fontDesc = $context->get_font_description();
+            my @new_font_array;
+            unless (defined($new_family)) {
+                $new_family = $fontDesc->get_family();
+            }
+            push(@new_font_array, $new_family);
+            unless (defined($new_size)) {
+                if ($type =~ m/^Text/) {
+                    $new_size = &get_fontsize($object->{textview});
+                } else {
+                    $new_size = &get_fontsize($object->{ref});
+                }
+            }
+            push(@new_font_array, $new_size);
+            if (defined($new_weight)) {
+                push(@new_font_array, $new_weight);
+            }
+            $new_font_string = &font_array_to_string(@new_font_array);
+        }
+        my $font_desc = Gtk2::Pango::FontDescription->from_string($new_font_string);
+        
+        # get the needed label
+        my $label = $object->{ref};
+        if ($type =~ m/^Frame/) {
+            $label = $object->{ref}->get_label_widget();
+        }
+        elsif ($type =~ m/(^|k|o)Button$/) {
+            $label = $object->{ref}->get_child();
+        }
+        elsif ($type =~ m/^Text/) {
+           $label = $object->{textview};
+        }
+        elsif ($type eq 'NotebookPage'){
+            $label = $object->{pagelabel};
+        }
+        $label->modify_font($font_desc);
+
+        # update or add new font to object
+        $object->{font} = $new_font_string;
+        #print "new_font_string: $new_font_string\n";
+    } else {
+        if (defined($new_font_string)) {
+            $self->internal_die($object, "Can't set font \"$new_font_string\" - wrong type \"$type\"!");
+        } else {
+            $self->internal_die($object, "Can't set font - wrong type \"$type\"!");
+        }
+        return;
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set_font_color(<name>, <color>, <state>)
+# <state> is optional. Default is 'normal'
+# ---------------------------------------------------------------------
+sub set_font_color($@) {
+    my $self = shift;
+    my ($name, $new_color, $state) = @_;
+    
+    $state = 'normal' unless defined($state);
+    
+    # get widget object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+    my $gdk_color = Gtk2::Gdk::Color->parse($new_color);
+
+    # get text widget to modify color
+    my $label;
+    if ($object->{type} =~ m/(^|k|o)Button$/) {
+        $label = $object->{ref}->get_child();
+    }
+    elsif ($object->{type} =~ m/^Frame/) {
+        $label = $object->{ref}->get_label_widget();
+    }
+    elsif ($object->{type} =~ m/^Label/) {
+        $label = $object->{ref};
+    }
+    elsif ($type eq 'NotebookPage'){
+        $label = $object->{pagelabel};
+    }
+    else {
+        $self->internal_die($object, "Can't set color \"$new_color\" - wrong type \"$type\"!");
+    }
+    $label->modify_fg($state, $gdk_color);
+}
+
+
+######################################################################
+# Windows
 ######################################################################
 
 # ---------------------------------------------------------------------
@@ -522,6 +2258,8 @@ sub new_window ($@) {
     $self->{containers} = {};
     # array of all widgets which must show at the end with show_all()
     $self->{lates} = [];
+    # hash of subs which must execute between show_all() and gtk2->main
+    $self->{subs} = {};
     # hash with all signal handlers used for this window
     $self->{handler} = {};
     $self->{scalefactor} = 1.0;
@@ -529,6 +2267,7 @@ sub new_window ($@) {
     $self->{base} = 10;
     $self->{old_font} = undef;
     $self->{old_fontsize} = undef;
+    $self->{allocated_colors} = {};
 
     bless $self, $class;
 
@@ -629,7 +2368,7 @@ sub new_window ($@) {
         if (defined($vbox)) {
             $self->{ref}->add($vbox);
         } else {
-            $self->{ref}->add($fixed);	    
+            $self->{ref}->add($fixed);        
         }
     }
 
@@ -666,144 +2405,23 @@ sub new_window ($@) {
 }
 
 
-######################################################################
-# Internal callback functions
-######################################################################
-
-sub _query_tooltip {
-    my ($widget, $x, $y, $keyb, $tooltip) = @_;
-    
-    return 0 if $keyb;
-    
-    $tooltip->set_text($widget->get_tooltip_text);
-    return 1;
-}
-
-sub _on_changed_update {
-    my ($widget, $self) = @_;
-    
-    my $changes;
-    my $key;
-    
-    # get object
-    my $object = $self->get_object($widget);
-    
-    if ($object->{type} eq 'Entry') {
-        # get text
-        $changes = $object->{ref}->get_text();
-        $key = 'title';
-        # update object
-        $object->{$key} = $changes;
-    }
-    elsif ($object->{type} eq 'SpinButton') {
-        $changes = $object->{ref}->get_value();
-        $key = 'value';
-        # update object
-        $object->{$key} = $changes;
-    }    
-}
-
-
-sub _on_font_changed($) {
-    my $self = shift;
-    my $new_font = $self->get_font_string($self->{name});
-    my $changed = 0;
-    
-    # has font changed?
-    if ($new_font ne $self->{font}) {
-        # update the main window font
-        $self->{old_font} = $self->{font};
-        $self->{font} = $self->get_font_string($self->{name});
-        $changed = 1;
-    }
-    
-    if ($changed) {
-        my $new_fontsize = &get_fontsize($self->{ref});
-
-        # update new font size and scale factor if font size has changed
-        if ($new_fontsize != $self->{fontsize}) {
-            $self->{old_fontsize} = $self->{fontsize};
-            $self->{fontsize} = $new_fontsize;
-            $self->{scalefactor} = $self->_calc_scalefactor($self->{base}, $self->{fontsize});
-        }
-    
-        # update size and position of all widgets
-        $self->_update_size_pos_and_font();
-    
-        # and now the window itself
-        sleep 1; # needed because window resize faster than the widgets
-        my $object = $self->get_object($self->{name});
-        $object->{width} = $self->_scale($object->{width});
-        $object->{height} = $self->_scale($object->{height});
-        $object->{ref}->resize($object->{width}, $object->{height});
-        
-        # Now the current base can be set if different from fontsize
-        if ($self->{scalefactor} != 1) {
-            $self->{base} = $self->{fontsize};
-            $self->{scalefactor} = 1.0;
-        }
-    }
-}
-
-
-######################################################################
-# Helper functions
-######################################################################
-
-# ---------------------------------------------------------------------
-# internal die if fatal error occur
-# ---------------------------------------------------------------------
-sub internal_die ($@) {
-    my $self = shift;
-    my ($object, $msg) = @_;
-    $msg =~ s/([^\.!?])$/$1./;
-    if (defined($msg)) {
-        die $self->{name} . "->$object->{name}: $msg Exiting.\n";
-    } else {
-        die $self->{name} . ": $msg Exiting.\n";
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# print error message to standard error
-# ---------------------------------------------------------------------
-sub show_error ($@) {
-    my $self = shift;
-    my ($object, $msg) = @_;
-    if (defined($msg)) {
-        print STDERR "[" . $self->{name} . "->$object->{name}][err]: $msg\n";
-    } else {
-        print STDERR "[" . $self->{objects}->{$self->{name}}->{title} . "][err]: $object\n";
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# print message to standard error
-# ---------------------------------------------------------------------
-sub show_message ($@) {
-    my $self = shift;
-    my ($object, $msg) = @_;
-    if (defined($msg)) {
-        print STDERR "[" . $self->{name} . "->$object->{name}][msg]: $msg\n";
-    } else {
-        print STDERR "[" . $self->{objects}->{$self->{name}}->{title} . "][msg]: $object\n";
-    }
-}
-
-
 # ---------------------------------------------------------------------
 # show window with all widgets without run Gtk2->main
 # this is important if lib will use in FVWM module
 # ---------------------------------------------------------------------
 sub show($) {
     my $self = shift;
-    $self->{ref}->show();
+    $self->{ref}->show_all();
     # show some widgets which are in the lates array
     foreach my $name (@{$self->{lates}}) {
         my $object = $self->get_object($name);
-        $object->{ref}->show_all();
+        my $ref = 'ref';
+        $object->{$ref}->show();
+    }
+    # execute functions like draw which have to be executed between
+    # show_all() and Gtk2->main
+    foreach my $sub (sort keys %{$self->{subs}}) {
+        $self->{subs}->{$sub}->();
     }
     # Now the current base can be set if different from fontsize
     if ($self->{scalefactor} != 1) {
@@ -822,1176 +2440,155 @@ sub show_and_run($) {
     Gtk2->main;
 }
 
+
 # ---------------------------------------------------------------------
-# add signal to widget
-# add_signal_handler(<name>, <signal>, <function>, <data>)
+# add_msg_dialog(   Name => <name>,                 <= widget name - must be unique
+#                   Modal => <0/1>,                 <= Optional. Default: modal (1)
+#                   DType => "<dialog_type>",       <= default: 'none'. Else 'ok', 'close', 'cancel', 'yes-no' or 'ok-cancel'
+#                   MTyp => "<message_type>",       <= 'info', 'warning', 'question', 'error' or 'other'
+#                   Icon => <path|stock|name>       <= Optional. Icon instead of message type icon
+#                   RFunc => <response_function>    <= Have to be set if nonmodal (Modal => 0) is chosen.
+#                                                      Gets the response 'ok', 'close', 'cancel', 'yes' or 'no'
+#)
 # ---------------------------------------------------------------------
-sub add_signal_handler($@) {
+sub add_msg_dialog($@) {
     my $self = shift;
-    my ($name, $signal, $function, $data) = @_;
-    my $id;
-    # is it the window itself?
-    if ($name eq $self->{name}) {
-        $id = $self->{ref}->signal_connect($signal, $function, $data);
-        # add id for removing in handler hash
-        $self->{handler}->{$signal} = $id;
-    # or the others?
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'MessageDialog';
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # message dialog specific fields
+    $object->{modal} = defined($params{'modal'}) ? $params{'modal'} : 1;
+    $object->{dialogtype} = $params{'dialogtype'} || 'none';
+    $object->{messagetype} = $params{'messagetype'};
+    $object->{icon} = $params{'icon'} || undef;
+    unless ($object->{modal}) {
+        $object->{rfunc} = $params{'responsefunction'};
     } else {
-        my $object = $self->get_object($name);
-        if ($object->{type} eq 'NotebookPage' and $signal eq 'query_tooltip') {
-        	$id = $object->{pagelabel}->signal_connect($signal, $function, $data);
-        } else {
-            $id = $object->{ref}->signal_connect($signal, $function, $data);
-        }
-        $object->{handler}->{$signal} = $id;
+        $object->{rfunc} = undef;
     }
 }
 
 # ---------------------------------------------------------------------
-# remove signal handler from widget
-# remove_signal_handler(<name>, <signal>)
+# show_msg_dialog(<name>, "<message_text1>", "<message_text2>")
+# or a simple one / as stand alone
+# show_msg_dialog(<dialog_type>, "<message_type>", "<message_text>")
+# returns the response ('ok', 'close', 'cancel', 'yes', 'no')
 # ---------------------------------------------------------------------
-sub remove_signal_handler($@) {
+sub show_msg_dialog($@) {
     my $self = shift;
-    my ($name, $signal) = @_;
+    my ($name, $msg1, $msg2);
+    # is it standalone? 
+    unless (ref($self) =~ /^SimpleGtk2/) {
+        $name = $self;
+        ($msg1, $msg2) = @_;
+    } else {
+        ($name, $msg1, $msg2) = @_;
+    }
     
-    my $object = $self->get_object($name);
-    my $id = $object->{handler}->{$signal};
-    
-    $object->{ref}->signal_handler_disconnect($id);
-    delete $object->{handler}->{$signal};
-}
-
-
-# ---------------------------------------------------------------------
-# get object hash from objects list
-# get_object(<name_or_widget>)
-# ---------------------------------------------------------------------
-sub get_object($$) {
-    my $self = shift;
-    my $identifier = shift;
     my $object = undef;
-    if (ref($identifier) =~ m/^Gtk2::/) {
-        foreach (keys %{$self->{objects}}) {
-            if (defined($self->{objects}->{$_}->{$entry})) {
-                if ($self->{objects}->{$_}->{$entry} == $identifier) {
-                    $object = $self->{objects}->{$_};
-                }
-            }
-        }
-    } else {
-        $object = $self->{objects}->{$identifier};
-    }
-    $self->show_error($identifier, "No object found!") unless defined($object);
-    return $object;
-}
-
-# ---------------------------------------------------------------------
-# check if object xyz exist. Return 1 if true else 0
-# exist_object(<name_or_widget>)
-# ---------------------------------------------------------------------
-sub exist_object($$) {
-    my $self = shift;
-    my $identifier = shift;
-    my $exist = 0;
-    if (ref($identifier) =~ m/^Gtk2::/) {
-        foreach (keys %{$self->{objects}}) {
-            if (ref($self->{objects}->{$_}->{ref}) eq ref($identifier)) {
-                $exist = 1;
-            }
-        }
-    } else {
-        if (defined($self->{objects}->{$identifier})) {
-            $exist = 1;
-        }
-    }
-    return $exist;
-}
-
-
-# ---------------------------------------------------------------------
-# get widget reference
-# get_widget(<name>)    <= must be unique
-# ---------------------------------------------------------------------
-sub get_widget($$) {
-    my $self = shift;
-    my $name = shift;
-    return $self->{objects}->{$name}->{ref};
-}
-
-
-# ---------------------------------------------------------------------
-# hide a widget
-# hide_widget(<name>)
-# ---------------------------------------------------------------------
-sub hide_widget($$) {
-    my $self = shift;
-    my $name = shift;
-
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
+    my $parent_window = undef;
+    my $modal;
+    my $flags;
+    my $messagetype;
+    my $dialogtype;
+    my $color;
     
-    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
-        $object->{ref}->hide();
+    # Is it a standalone message dialog?
+    my $standalone = 1 || 0 unless (ref($self) =~ /^SimpleGtk2/);
+    my $simple = 0;
+    unless ($standalone) {
+        $simple = 1 unless exists($self->{objects}->{$name});
+        $parent_window = $self->{ref};
     } else {
-        $self->show_error($object, "For \"$type\" use set_sensitive() instead.");
-        return;
+        $simple = 1;
     }
-}
-
-
-# ---------------------------------------------------------------------
-# show a widget
-# show_widget(<name>)
-# ---------------------------------------------------------------------
-sub show_widget($$) {
-    my $self = shift;
-    my $name = shift;
-
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
     
-    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
-        $object->{ref}->show();
+    # is it a simple message dialog?
+    if ($simple) {
+        $flags = [qw/modal destroy-with-parent/];
+        $modal = 1;
+        $dialogtype = $msg1;
+        $messagetype = $name;
+        #'info', 'warning', 'question', 'error'
+        my $sign;
+        if ($messagetype =~ /info|question/) {
+            $color = 'blue';
+            $sign = '.'
+        } else {
+            $color = 'red';
+            $sign = '!'
+        }
+        $msg1 = "<span foreground=\"$color\" size=\"x-large\">" . _(ucfirst($messagetype)) . "$sign </span>"; 
     } else {
-        $self->show_error($object, "For \"$type\" use set_sensitive() instead.");
-        return;
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# get_container(<name_of_container>)
-# ---------------------------------------------------------------------
-sub get_container($@) {
-    my $self = shift;
-    my $name = shift;
-    return $self->{containers}->{$name};
-}
-
-
-# ---------------------------------------------------------------------
-# add widget to a fixed container
-# add_to_container(<name>)
-# ---------------------------------------------------------------------
-sub add_to_container($@) {
-    my $self = shift;
-    my $name = shift;
-    my $object = $self->get_object($name);
-    
-    if (defined($object->{container})) {
-        my $container = $self->get_container($object->{container});
-        my $container_obj = $self->get_object($object->{container});
+        # get object
+        $object = $self->get_object($name);
         
-        # calculate position
-        my $x = $object->{pos_x};
-        my $y = $object->{pos_y};
-        if ($container_obj->{type} eq 'Frame') {
-            ($x, $y) = $self->_get_pos_in_frame($object->{container}, $object->{pos_x}, $object->{pos_y});
-        }
-        
-        $container->put($object->{ref}, $x, $y);
-    } else {
-        $self->{container}->put($object->{ref}, $object->{pos_x}, $object->{pos_y});
-    }
-}
-
-# ---------------------------------------------------------------------
-# add tooltip to widget
-# add_tooltip(<name>)
-# ---------------------------------------------------------------------
-sub add_tooltip($@) {
-    my $self = shift;
-    my $name = shift;
-    my $object = $self->get_object($name);
-
-    # Check if tooltip should use
-    if (defined($object->{tip})) {
-        # remove all spaces/tabs if a backslash is found => wrap in script
-        # in long text for better readability
-        $object->{tip} =~ s/\R\h+//g;
-        if ($object->{type} eq 'NotebookPage') {
-            # add tooltip to label widget of the page if avaliable
-            my $notebook = $self->get_widget($object->{notebook});
-            my $page_label = $notebook->get_menu_label($object->{ref});
-            $object->{pagelabel}->set_tooltip_text(_($object->{tip}));
-        } else {
-            $object->{ref}->set_tooltip_text(_($object->{tip}));
-        }
-        
-        $self->add_signal_handler($object->{name}, "query_tooltip", \&_query_tooltip);
-    }
-}
-
-######################################################################
-# Widget create functions
-######################################################################
-
-# ---------------------------------------------------------------------
-# add_button(   Name   => <name>,                  <= Name of the button. Must be unique
-#               Pos    => [pos_x, pos_y], 
-#               Title  => <title>,
-#               Font   => [family, size, weight]   <= Optional. Sets a title font. to use the defaults set values with undef
-#               Color  => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                               State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Size   => [width, height],         <= Optional
-#               Tip    => <tooltip-text>)          <= Optional
-#               Frame  => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#               Func   => <function_click>         <= Optional. Can be set later with add_signal_handler
-#               Sig    => <signal>                 <= Optional. Only in conjunction with Func
-#               Sens   => <sensitive>              <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_button($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'Button';
-
-    # button specific fields
-    my $font = $params{'font'} || undef;
-    my $color = $params{'color'}[0] || undef;
-    my $cstate = $params{'color'}[1] || undef;
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # create button
-    my $button;
-    if (defined($object->{title})) {
-        # if underline in text should use
-        if ($self->is_underlined($object->{title})) {
-            $button = Gtk2::Button->new_with_mnemonic(_($object->{title}));
-            $button->set_use_underline(1);
-        } else {
-            $button = Gtk2::Button->new_with_label(_($object->{title}));
-        }
-    } else {
-        $button = Gtk2::Button->new();
+        $flags = $object->{modal} ? [qw/modal destroy-with-parent/] : 'destroy-with-parent';
+        $modal = $object->{modal};
+        $dialogtype = $object->{dialogtype};
+        $messagetype = $object->{messagetype};
     }
     
-    # add widget reference to widget object
-    $object->{ref} = $button;
+    # initialize message box
+    my $msg_box = Gtk2::MessageDialog->new_with_markup($parent_window,
+                                            $flags,
+                                            $messagetype,
+                                            $dialogtype,
+                                            sprintf _("$msg1"));
     
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-    
-    # set font color if defined
-    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
-
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # position the button
-    $self->add_to_container($object->{name});
-
-    $button->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_link_button(  Name    => <name>,                  <= Name of the button. Must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Title   => <title>,
-#                   Font    => [family, size, weight]   <= Optional. Sets a title font. to use the defaults set values with undef
-#                   Color  => [<color>, <state>]        <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#                   Size    => [width, height],         <= Optional
-#                   Uri     => <Uri-text>)              <= A valid URI. It is the tooltip as well.
-#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>         <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>              <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_link_button($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'LinkButton';
-    
-    # link button specific fields
-    my $uri = $params{'uri'} || undef;
-    my $font = $params{'font'} || undef;
-    my $color = $params{'color'}[0] || undef;
-    my $cstate = $params{'color'}[1] || undef;
-
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # create link button
-    my $link_button;
-    if (defined($uri)) {
-        $link_button = Gtk2::LinkButton->new($uri, _($object->{title}));
-    } else {
-        $self->internal_die($object, "No Uri defined! Exiting.");
-    }
-
-    # set relief to none
-    $link_button->set_relief ('none');
-    
-    # add widget reference to widget object
-    $object->{ref} = $link_button;
-    
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-
-    # set font color if defined
-    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
-
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # position the button
-    $self->add_to_container($object->{name});
-
-    $link_button->show();
-}
-
-# ---------------------------------------------------------------------
-# add_filechooser_button(   Name    => <name>,              <= Name of the button. Must be unique
-#                           Pos     => [pos_x, pos_y], 
-#                           Title   => <title>,
-#                           Size    => [width, height],     <= Optional
-#                           Tip     => <tooltip-text>       <= Optional
-#                           Action  => <open_mode>          <= The open modes are: 'open' and 'select-folder'.
-#                           Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#                           File    => <file_path>          <= Optional. Set file for 'open' action
-#                           Filter  => <pattern|mimetype> | [<name>, <pattern|mimetype>]  <= Optional. Sets the current file filter for 'open' action
-#                           Folder  => <directory>          <= Optional. Set directory for 'select-folder' action or if no file path is set for 'open' action
-#                           Func    => <function>           <= Optional. Can be set later with add_signal_handler
-#                           Sig     => <signal>             <= Optional. Only in conjunction with Func
-#                           Sens    => <sensitive>          <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_filechooser_button($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'FileChooserButton';
-    
-    # filechooser button specific fields
-    my $action = $params{'action'} || undef;
-    my $file = $params{'file'} || undef;
-    my @filter = (undef, undef);
-    if (defined($params{'filter'})) {
-        if (ref($params{'filter'}) eq 'ARRAY') {
-            $filter[0] = $params{'filter'}[0];
-            $filter[1] = $params{'filter'}[1];
-        } else {
-            $filter[1] = $params{'filter'};
-        }
-    }
-    $object->{filter} = undef;
-    my $folder = $params{'folder'} || undef;
-
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # create filechooser button
-    my $filechooser_button;
-    if (defined($action)) {
-        $filechooser_button = Gtk2::FileChooserButton->new(_($object->{title}), $action);
-    } else {
-        $self->internal_die($object, "No action defined! Exiting.");
-    }
-
-    # set file or folder if defined
-    if ($action eq 'open') {
-        if (defined($file)) {
-            $filechooser_button->set_filename($file);
-        } else {
-            $filechooser_button->set_current_folder($folder) if defined($folder);
-        }
-    } else {
-        $filechooser_button->set_current_folder($folder) if defined($folder);
+    # if a second text is set
+    if (defined($msg2)) {
+        $msg_box->format_secondary_markup(_($msg2));
     }
     
-    # set filter if defined
-    if (defined($filter[1])) {
-        my $file_filter = Gtk2::FileFilter->new();
-        # filter type name
-        if (defined($filter[0])) {
-            $file_filter->set_name($filter[0]);
-        }
-        # mimetype or pattern
-        if ($filter[1] =~ /\//) {
-            $file_filter->add_mime_type($filter[1]);
-        } else {
-            $file_filter->add_pattern($filter[1]);
-        }
-        # add filter to object for later manipulation
-        $object->{filter} = $file_filter;
-        # add filter to button
-        if (defined($filter[0])) {
-            $filechooser_button->add_filter($file_filter);
-        } else {
-            $filechooser_button->set_filter($file_filter);
-        }
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $filechooser_button;
-    
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # position the button
-    $self->add_to_container($object->{name});
-
-    $filechooser_button->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_font_button(  Name    => <name>,                  <= Name of the button. Must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Title   => <title>,                 <= Optional. The title displayed in the font dialog
-#                   Size    => [width, height],         <= Optional
-#                   Tip     => <tooltip-text>           <= Optional
-#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#                   Font    => [family, size, weight]   <= Optional. Sets the initial font. Font family and size are requiered if set
-#                   Func    => <function>               <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>              <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_font_button($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'FontButton';
-    
-    # font button specific fields
-    $object->{font} =  undef;
-
-    # create font button
-    my $font_button;
-    if (defined $params{'font'}) {
-        $object->{font} = scalar(@{$params{'font'}}) == 2 ? join(" ", @{$params{'font'}}) : "$params{'font'}[0] $params{'font'}[2] $params{'font'}[1]";
-        $font_button = Gtk2::FontButton->new($object->{font});
-    } else {
-        $font_button = Gtk2::FontButton->new();
-    }
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
     # set title
-    if (defined($object->{title})) {
-        $font_button->set_title(_($object->{title}));
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $font_button;
-    
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # position the button
-    $self->add_to_container($object->{name});
-
-    $font_button->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_check_button( Name => <name>,                 <= Name of the button. Must be unique
-#                   Pos => [pos_x, pos_y], 
-#                   Title => <title>,
-#                   Font => [family, size, weight]  <= Optional. Sets a button font. to use the defaults set values with undef
-#                   Color  => [<color>, <state>]    <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#                   Active => 0/1                   <= Should be active? Default: 0 (not active)
-#                   Tip => <tooltip-text>)          <= Optional
-#                   Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
-#                   Func => <function_click>        <= Optional. Can be set later with add_signal_handler
-#                   Sig => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens => <sensitive>             <= Optional. Default: 1
-#                   )
-# ---------------------------------------------------------------------
-sub add_check_button($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'CheckButton';
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-    
-    # create check button
-    my $check_button = $self->create_check_widget($object->{name}, %params);
-
-    # position the button
-    $self->add_to_container($object->{name});
-    
-    $check_button->show();
-}
-
-
-# ---------------------------------------------------------------------
-# create_check_widget(<name>, <params>)
-# ---------------------------------------------------------------------
-sub create_check_widget($@) {
-    my $self = shift;
-    my ($name, %params) = @_;
-    
-    # get object
-    my $object = $self->get_object($name);
-    
-    # check button/item menu specific fields
-    my $active = $params{'active'} || 0;
-    my $font = $params{'font'} || undef;
-    my $color = $params{'color'}[0] || undef;
-    my $cstate = $params{'color'}[1] || undef;
-    
-    # create check button/item menu
-    my $check_widget;
-    if (defined($object->{title})) {
-        # if underline in text should use
-        if ($self->is_underlined($object->{title})) {
-            if ($object->{type} eq 'CheckButton') {
-                $check_widget = Gtk2::CheckButton->new_with_mnemonic(_($object->{title}));
-            } else {
-                $check_widget = Gtk2::CheckMenuItem->new_with_mnemonic(_($object->{title}));
-            }
-            $check_widget->set_use_underline(1);
-        } else {
-            if ($object->{type} eq 'CheckButton') {
-                $check_widget = Gtk2::CheckButton->new_with_label(_($object->{title}));
-            } else {
-                $check_widget = Gtk2::CheckMenuItem->new_with_label(_($object->{title}));
-            }
-        }
-    } else {
-        if ($object->{type} eq 'CheckButton') {
-            $check_widget = Gtk2::CheckButton->new();
-        } else {
-            $check_widget = Gtk2::CheckMenuItem->new();
-        }
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $check_widget;
-    
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-
-    # set font color if defined
-    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
-
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # set check button/item menu active
-    $check_widget->set_active($active);
-    
-    return $check_widget;
-}
-
-# ---------------------------------------------------------------------
-# add_radio_button( Name    => <name>,                  <= Name of the button. Must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Title   => <title>,
-#                   Font    => [family, size, weight]   <= Optional. Sets a button font. to use the defaults set values with undef
-#                   Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#                   Group   => <button_group>,          <= Name of the buttongroup. Must be unique
-#                   Active  => 0/1                      <= Which is the active button. Default: 0 (not active)
-#                   Tip     => <tooltip-text>)          <= Optional
-#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>         <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>              <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_radio_button($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'RadioButton';
-
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-    
-    # create radio button
-    my $radio_button = $self->create_radio_widget($object->{name}, %params);
-    
-    # position the radio button
-    $self->add_to_container($object->{name});
-    
-    $radio_button->show();
-}
-
-# ---------------------------------------------------------------------
-# create_radio_widget(<name>, <params>)
-# ---------------------------------------------------------------------
-sub create_radio_widget($@) {
-    my $self = shift;
-    my ($name, %params) = @_;
-    
-    # get object
-    my $object = $self->get_object($name);
-    
-    # radio button/menu item specific fields
-    $object->{group} = $params{'group'} || undef;
-    my $active = $params{'active'} || 0;
-    my $font = $params{'font'} || undef;
-    my $color = $params{'color'}[0] || undef;
-    my $cstate = $params{'color'}[1] || undef;
-    
-    # create radio button/menu item
-    my $radio_widget;
-    
-    # get the last button/menu item in the group
-    my $group = [];
-    my $last = undef;
-    if (exists($self->{groups}->{$object->{group}})) {
-        $last = $self->get_widget($self->{groups}->{$object->{group}}[-1]);
-        #$group = $last->get_group();
-    } else {
-        $self->{groups}->{$object->{group}} = [];
-    }
-    
-    if (defined($object->{title})) {
-        if ($object->{type} eq 'RadioButton') {
-            $radio_widget = Gtk2::RadioButton->new($last, _($object->{title}));
-        } else {
-            $radio_widget = Gtk2::RadioMenuItem->new($last, _($object->{title}));
-        }
+    $msg_box->set_title(_(ucfirst($messagetype)));
         
-        # if underline in text should use
-        if ($self->is_underlined($object->{title})) {
-            $radio_widget->set_use_underline(1);
-        }
+    if (defined($object)) {
+        # if another icon is suggested set it
+        if (defined($object->{icon})) {
+            my $icon = $object->{icon};
+            my $image;
+            # stock icon?
+            if ($icon =~ /^gtk-/) {
+                $image = Gtk2::Image->new_from_stock($icon, 'dialog');
+            }
+            # path or theme icon name?
+            elsif (-e $icon) {
+                $image = Gtk2::Image->new_from_file($icon);
+            } 
+            else {
+                $image = Gtk2::Image->new_from_icon_name($icon, 'dialog');
+            }
+            $msg_box->set_image($image);
+            $image->show();
+        }        
+    }
         
+    # modal or not ... that's the question ^^
+    if ($modal) {
+        my $response = $msg_box->run();
+        $msg_box->destroy();
+        return $response;
     } else {
-        if ($object->{type} eq 'RadioButton') {
-            $radio_widget = Gtk2::RadioButton->new($last);
-        } else {
-            $radio_widget = Gtk2::RadioMenuItem->new($last);
-        }
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $radio_widget;
-    
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-
-    # set font color if defined
-    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
-
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # add button/menu item to buttons list
-    push(@{$self->{groups}->{$object->{group}}}, $object->{name});
-    
-    # set radio button/menu item active
-    $radio_widget->set_active($active);
-    
-    return $radio_widget;
+        # react whenever the user responds.
+        $msg_box->signal_connect(response => sub {
+            my ($self, $response, $object) = @_;
+            $self->destroy();
+            $object->{rfunc}->($response);
+        }, $object);
+        $msg_box->show_all();
+    }  
 }
 
 
-# ---------------------------------------------------------------------
-# add_label (   Name    => <name>,                  <= name of the label. Must be unique
-#               Title   => <title>,
-#               Font    => [family, size, weight]   <= Optional. Sets a label font. to use the defaults set values with undef
-#               Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Pos     => [pos_x, pos_y], 
-#               Widget  => <name_of_linked_widget>  <= Optional in conjunction with underlined
-#               Justify => <justify>                <= Optional: left, right, center, fill
-#               Wrap    => 0/1                      <= Optional. Only usable in a frame
-#               Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#               Sens    => <sensitive>              <= Optional. Default: 1
-#               Tip     => <tooltip-text>)          <= Optional
-#)
-# ---------------------------------------------------------------------
-sub add_label($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'Label';
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # label specific fields
-    $object->{widget} = $params{'widget'} || undef;
-    my $justify = $params{'justify'} || undef;
-    my $wrapped = $params{'wrapped'} || 0;
-    my $font = $params{'font'} || undef;
-    my $color = $params{'color'}[0] || undef;
-    my $cstate = $params{'color'}[1] || undef;
-
-    # create label
-    my $label;
-
-    # remove all spaces/tabs if a backslash is found => wrap in script
-    # in long text for better readability
-    $object->{title} =~ s/\R\h+//g;
-
-    if ($self->is_underlined($object->{title})) {
-        $label = Gtk2::Label->new_with_mnemonic(_($object->{title}));
-        my $obj_ref = $self->get_widget($object->{widget});
-        $label->set_mnemonic_widget($obj_ref);
-    } else {
-        $label = Gtk2::Label->new(_($object->{title}));
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $label;
-    
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # if text should wrapped
-    $label->set_line_wrap($wrapped);
-    
-    # should text justified
-    $label->set_justify($justify) if defined($justify);
-    
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-    
-    # set font color if defined
-    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
-
-    # position the label
-    $self->add_to_container($object->{name});
-    
-    $label->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_frame (   Name    => <name>,                  <= widget name - must be unique
-#               Title   => <title>,
-#               Font    => [family, size, weight]   <= Optional. Sets a frame font. to use the defaults set values with undef
-#               Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Pos     => [pos_x, pos_y], 
-#               Size    => [width, height],
-#               Tip     => <tooltip-text>)          <= Optional
-#               Sens    => <sensitive>              <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_frame($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'Frame';
-    my $font = $params{'font'} || undef;
-    my $color = $params{'color'}[0] || undef;
-    my $cstate = $params{'color'}[1] || undef;
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # create frame
-    my $frame;
-    if ($object->{title}) {
-        $frame = Gtk2::Frame->new(_($object->{title}));
-    } else {
-        $frame = Gtk2::Frame->new();        
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $frame;
-    
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-
-    # set font color if defined
-    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
-
-    # Create the fixed container
-    my $fixed = new Gtk2::Fixed();
-    $self->{containers}->{$object->{name}} = $fixed;
-    $frame->add($fixed);
-    $fixed->show();
-    
-    # set positon of the frame
-    unless (defined($object->{container})) {
-        $self->{container}->put($frame, $object->{pos_x}, $object->{pos_y});
-    } else {
-        $self->add_to_container($object->{name});
-    }
-    
-    $frame->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_entry (   Name => <name>,                 <= object name - must be unique
-#               Title => <title>,
-#               Font => [family, size, weight]  <= Optional. Sets a text entry font. to use the defaults set values with undef
-#               Pos => [pos_x, pos_y], 
-#               Size => [width, height],
-#               Align => <xalign>               <= Optional: left (default), right
-#               Tip => <tooltip-text>)          <= Optional
-#               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
-#               Func => <function_click>        <= Optional. Can be set later with add_signal_handler
-#               Sig => <signal>                 <= Optional. Only in conjunction with Func
-#               Sens => <sensitive>             <= Optional. Default: 1
-#               )
-# ---------------------------------------------------------------------
-sub add_entry($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'Entry';
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # entry specific fields
-    my $align = $params{'align'} || 0;
-    my $font = $params{'font'} || undef;
-    
-    # create entry
-    my $entry = Gtk2::Entry->new();
-    if ($object->{title}) {
-        $entry->set_text(_($object->{title}));
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $entry;
-    
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-
-    # add handler 'changed' to update object every time text is changing
-    $self->add_signal_handler($object->{name}, 'changed', \&_on_changed_update, $self);
-    
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # check if alignment for text is set
-    if ($align eq 'right') {$entry->set_alignment(1);}
-    
-    # position the entry
-    $self->add_to_container($object->{name});
-    
-    $entry->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_spin_button(  Name    => <name>,              <= widget name - must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Size    => [width, height],     <= Optional
-#                   Start   => <start_value>,       <= Optional. Default: 0.0
-#                   Min     => <min_value>,         <= Double
-#                   Max     => <max_value>,         <= Double
-#                   Step    => <step_in/decrease>   <= Double
-#                   Page    => <page_in/decrease>   <= Double
-#                   Snap    => <snap_to_tick>       <= Optional
-#                   Align   => <align>              <= Optional (left, right)
-#                   Rate    => <from 0.0 to 1.0>    <= Optional. Default: 0.0
-#                   Digits  => <used_digits>        <= Optional. Default: 0 (1 digit)
-#                   Tip     => <tooltip-text>       <= Optional
-#                   Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>     <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>             <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>          <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_spin_button($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'SpinButton';
-
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # spin button specific fields
-    my $start = $params{'start'} || 0.0;
-    my $min = $params{'minimum'} || 0.0;
-    my $max = $params{'maximum'} || 0.0;
-    my $step = $params{'step'} || 0;
-    my $page = $params{'page'} || 0;
-    my $align = $params{'align'} || 0;
-    my $snap = $params{'snap'} || 0;
-    my $climbrate = $params{'climbrate'} || 0.0;
-    my $digits = $params{'digits'} || 0;
-
-    # first create an adjustment widget to hold information about the range of 
-    # values that the spin button can take
-    my $adjustment = Gtk2::Adjustment->new( $start,
-                                            $min,
-                                            $max,
-                                            $step,
-                                            $page,
-                                            0.0);
-
-    # add to object for later manipulation
-    $object->{adjustment} = $adjustment;
-    
-    # now the spin button follows
-    my $spin_button = Gtk2::SpinButton->new($adjustment, $climbrate, $digits);
-    
-    # as climbrate doesn't exist to get/set we hold it in the object
-    $object->{climbrate} = $climbrate;
-    
-    # add widget reference to widget object
-    $object->{ref} = $spin_button;
-    
-    # get initial set value
-    $object->{value} = $spin_button->get_value();
-    
-    # add handler 'value-changed' to update object every time value is changing
-    $self->add_signal_handler($object->{name}, 'value-changed', \&_on_changed_update, $self);
-    
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # spin button can contain only numeric values
-    $spin_button->set_numeric(1);
-    
-    # Sets the policy as to whether values are corrected to the nearest step increment
-    $spin_button->set_snap_to_ticks($snap);
-    
-    # set the spin button to wrap around between the upper and lower range values
-    $spin_button->set_wrap(1);
-    
-    # The update policy of the spin button
-    $spin_button->set_update_policy ('if-valid');
-    
-    # set alignment of values
-    if ($align eq 'right') {$spin_button->set_alignment(1);}
-
-    # position the spin button
-    $self->add_to_container($object->{name});
-    
-    $spin_button->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_combo_box(    Name => <name>,                     <= widget name - must be unique
-#                   Pos => [pos_x, pos_y], 
-#                   Size => [width, height],            <= Optional
-#                   Data => [Array_of_values>],
-#                   Start => <start_value>,
-#                   Columns = <wrap_list_to_x_columns>  <= Optional
-#                   Tip => <tooltip-text>)              <= Optional
-#                   Frame => <frame_name>               <= Name of the frame where widget is located. Must be unique
-#                   Func => <function_click>            <= Optional. Can be set later with add_signal_handler
-#                   Sig => <signal>                     <= Optional. Only in conjunction with Func
-#                   Sens => <sensitive>                 <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_combo_box($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'ComboBox';
-
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # combo box specific fields
-    $object->{data} = $params{'data'} || [];
-    my $start = $params{'start'} || 0;
-    my $columns = $params{'columns'} || undef;
-
-    # create Gtk2::TreeModel object
-    my $model = Gtk2::ListStore->new(qw/Glib::String/);
-    
-    # add data to ListStore object
-    foreach(@{$object->{data}}) {
-        my $iter = $model->append;
-        $model->set($iter,0 => _($_));
-    }   
-    
-    # create combo box
-    my $combo_box = Gtk2::ComboBox->new_text();
-    $combo_box->set_model($model);
-    
-    # add widget reference to widget object
-    $object->{ref} = $combo_box;
-    
-    # set active item
-    $combo_box->set_active($start);
-    
-    # check if list should wrap into x columns
-    $combo_box->set_wrap_width($columns) if defined($columns);
-    
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-    # position the combo box
-    $self->add_to_container($object->{name});
-    
-    $combo_box->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_progressbar(  Name => <name>,                     <= widget name - must be unique
-#                   Pos => [pos_x, pos_y], 
-#                   Size => [width, height],            <= Optional
-#                   Mode => <mode>,                     <= percent, pulse
-#                   Steps => <>
-#                   orient => <orientation>,            <= 
-#                   Timer => <update_time>              <= in ms
-#                   Align => <align>                    <= Optional (left, right)
-#                   Tip => <tooltip-text>)              <= Optional
-#)
-# ---------------------------------------------------------------------
-
-
-
-
-#                   Step => <step_in/decrease>      
-#                   Align => <align>                <= Optional (left, right)
-#                   Climbrate => <from 0.0 to 1.0>  <= Optional (default: 0.0)
-#                   Digits => <used_digits>         <= Optional (default: 0)
-
-# ---------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------
-# add_slider(   Name        => <name>,              <= widget name - must be unique
-#               Pos         => [pos_x, pos_y], 
-#               Size        => [width, height],     <= Optional
-#               Orient      => <orientation>        <= orientation of the slider (horizontal, vertical)
-#               Start       => <start_value>,       <= Optional. Default: 0.0
-#               Min         => <min_value>,         <= Double
-#               Max         => <max_value>,         <= Double
-#               Step        => <step_in/decrease>   <= Double
-#               DrawValue   => <1/0>                <= Optional. Default: 1
-#               ValuePos    => <value_position>     <= Optional. Default: top (left, right, bottom)
-#               Digits      => <digits>             <= Optional. Default: 0 (1 digit)
-#               Tip         => <tooltip-text>)      <= Optional
-#               Frame       => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#               Func        => <function_click>     <= Optional. Can be set later with add_signal_handler
-#               Sig         => <signal>             <= Optional. Only in conjunction with Func
-#               Sens        => <sensitive>          <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-# TODO: If a draw value is active the slider is moved to another position.
-#       Have to be fixed ?
-# ---------------------------------------------------------------------
-sub add_slider($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'Slider';
-
-    $self->create_range_widget($object, %params);
-}
-
-
-# ---------------------------------------------------------------------
-# add_scrollbar(    Name    => <name>,              <= widget name - must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Size    => [width, height],     <= Optional
-#                   Orient  => <orientation>        <= orientation of the slider (horizontal, vertical)
-#                   Start   => <start_value>,       <= Optional. Default: 0.0
-#                   Min     => <min_value>,         <= Double
-#                   Max     => <max_value>,         <= Double
-#                   Step    => <step_in/decrease>   <= Double
-#                   Digits  => <digits>             <= Optional. Default: 0 (1 digit)
-#                   Tip     => <tooltip-text>)      <= Optional
-#                   Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>     <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>             <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>          <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_scroll_bar($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'Scrollbar';
-
-    $self->create_range_widget($object, %params);
-}
-
-
-# ---------------------------------------------------------------------
-# common function for sliders and scrollbars
-# TODO: the scrollbar hasn't a draw value. Perhaps adding a label with the
-# value via signal_emit('value_changed')
-# Problem: where do we get the position of the thumb? We have the length
-# of the scrollbar but not from the arrows. We have the min, max, steps and
-# the digits. So, if we get the length of the arrow we could calculate the
-# pixels ...
-# ---------------------------------------------------------------------
-sub create_range_widget($@) {
-    my $self = shift;
-    my ($object, %params) = @_;
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # slider specific fields
-    my $orient = $params{'orientation'} || undef;
-    my $start = $params{'start'} || 0;
-    my $min = $params{'minimum'} || 0;
-    my $max = $params{'maximum'} || 0;
-    my $step = $params{'step'} || 0;
-    my $draw_value = defined($params{'drawvalue'}) ? $params{'drawvalue'} : 1;
-    my $value_pos = $params{'valueposition'} || 'top';
-    my $digits = $params{'digits'} || 0;
-
-    # first create an adjustment widget to hold information about the range of 
-    # values that the slider can take
-    my $adjustment = Gtk2::Adjustment->new( $start,
-                                            $min,
-                                            $max,
-                                            $step,
-                                            0.0,
-                                            0.0);
-    
-    # add to object for later manipulation
-    $object->{adjustment} = $adjustment;
-    
-    # now the range widget follows
-    my $range_widget;
-    if ($object->{type} eq 'Slider'){
-        if ($orient eq 'horizontal') {
-            $range_widget = Gtk2::HScale->new($adjustment);
-        } else {
-            $range_widget = Gtk2::VScale->new($adjustment);
-        }
-    }
-    elsif ($object->{type} eq 'Scrollbar'){
-        if ($orient eq 'horizontal') {
-            $range_widget = Gtk2::HScrollbar->new($adjustment);
-        } else {
-            $range_widget = Gtk2::VScrollbar->new($adjustment);
-        }
-    }
-    
-    # add widget reference to widget object
-    $object->{ref} = $range_widget;
-    
-    # should the current slider value shown and where
-    if ($object->{type} eq 'Slider') {
-        $range_widget->set_draw_value($draw_value);
-        # set the position of the value
-        $range_widget->set_value_pos($value_pos);
-        # set the digits
-        $range_widget->set_digits($digits);
-    }
-
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    # position the slider
-    $self->add_to_container($object->{name});
-    $range_widget->show();
-}
-
+######################################################################
+# Display Widgets
+######################################################################
 
 # ---------------------------------------------------------------------
 # add_image(    Name    => <name>,                      <= widget name - must be unique
@@ -2089,6 +2686,954 @@ sub add_image($@) {
 
 
 # ---------------------------------------------------------------------
+# get image - as pixbuff or image object
+# get_image(<name> [, <keyname>])
+# ---------------------------------------------------------------------
+sub get_image($@) {
+    my $self = shift;
+    my $name = shift;
+    my $key = _extend(lc(shift)) || undef;
+    my $image = 'Error';
+
+    # get image object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+    if ($type =~ /Image/) {
+        # get image reference
+        if ($key eq 'image' or $key == undef) {$image = $object->{image};}
+        # get pixbuf
+        elsif ($key eq 'pixbuffer') {$image = $object->{pixbuf};}
+        # get path
+        elsif ($key eq 'path') {$image = $object->{path};}
+    
+        unless ($image eq 'Error') {
+            return $image;
+        } else {
+            $self->internal_die($object, "Unknown parameter \"$key\".");
+        }
+    } else {
+        $self->internal_die($object, "Not an image object.");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set_image(Name    => <name>,                      <= widget name - must be unique
+#           Path    => <file_path>,
+#           Pixbuf  => <pix_buffer_object>
+#           Image   => <image_object>
+#           Stock   => [<stock_name>,<stock_size>]  <= stock_size is per default 'dialog' because for scaling.
+#                                                           So, if stock_size is given, Size is optional
+#)
+# ---------------------------------------------------------------------
+sub set_image($@) {
+    my $self = shift;
+    my $name = shift;
+    my %params = $self->_normalize(@_);
+    
+    my $object = $self->get_object($name);
+    
+    my $image;
+    if (defined($params{'path'}) or defined($params{'pixbuffer'})) {
+        # path want be changed
+        if (defined($params{'path'})) {
+            $object->{path} = $params{'path'};
+            $object->{pixbuf} = Gtk2::Gdk::Pixbuf->new_from_file("$object->{path}");
+        }
+        # pixbuf want be changed
+        elsif (defined($params{'pixbuffer'})) {
+            $object->{pixbuf} = $params{'pixbuffer'};
+        }
+        
+        # scale image
+        my $scaled = $object->{pixbuf}->scale_simple($object->{width},$object->{height},'bilinear');
+        $image = Gtk2::Image->new_from_pixbuf($scaled);
+    }
+    elsif (defined($params{'image'})) {
+        $image = $params{'image'};
+    }
+    elsif (defined($params{'stock'})) {
+        $object->{stock} = $params{'stock'}[0] || undef;
+        my $stock_size =  $params{'stock'}[1] || 'dialog';
+
+        my $temp_image = Gtk2::Image->new_from_stock($object->{stock}, $stock_size);
+        $object->{pixbuf} = $temp_image->render_icon($object->{stock}, $stock_size);
+        # if no size is defined take the size from stock icon
+        my $scale_no = 2;
+        my $req = $temp_image->size_request();
+        unless (defined($object->{width})) {
+            $object->{width} = $req->width;
+            $scale_no -= 1;
+        }
+        unless (defined($object->{height})) {
+            $object->{height} = $req->height;
+            $scale_no -= 1;
+        }
+        # scale stock icon
+        my $scaled;
+        if ($scale_no != 0) {
+            $scaled = $object->{pixbuf}->scale_simple($object->{width},$object->{height},'bilinear');
+        } else {
+            $scaled = $object->{pixbuf};
+        }
+        $image = Gtk2::Image->new_from_pixbuf($scaled);
+    }
+    else {
+        my $rest = join(", ", keys %params);
+        $self->internal_die($object, "Unknown parameter(s): \"$rest\".");
+    }
+    
+    # remove old one from eventbox
+    $object->{ref}->remove($object->{image});
+    
+    # put the new image reference to the image object
+    $object->{image} = $image;
+
+    # add image to eventbox
+    $object->{ref}->add($image);
+    
+    # show new image
+    $object->{ref}->show();
+}
+
+
+# ---------------------------------------------------------------------
+# add_label (   Name    => <name>,                  <= name of the label. Must be unique
+#               Title   => <title>,
+#               Font    => [family, size, weight]   <= Optional. Sets a label font. to use the defaults set values with undef
+#               Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
+#               Pos     => [pos_x, pos_y], 
+#               Widget  => <name_of_linked_widget>  <= Optional in conjunction with underlined
+#               Justify => <justify>                <= Optional: left, right, center, fill
+#               Wrap    => 0/1                      <= Optional. Only usable in a frame
+#               Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
+#               Sens    => <sensitive>              <= Optional. Default: 1
+#               Tip     => <tooltip-text>)          <= Optional
+#)
+# ---------------------------------------------------------------------
+sub add_label($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Label';
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # label specific fields
+    $object->{widget} = $params{'widget'} || undef;
+    my $justify = $params{'justify'} || undef;
+    my $wrapped = $params{'wrapped'} || 0;
+    my $font = $params{'font'} || undef;
+    my $color = $params{'color'}[0] || undef;
+    my $cstate = $params{'color'}[1] || undef;
+
+    # create label
+    my $label;
+
+    # remove all spaces/tabs if a backslash is found => wrap in script
+    # in long text for better readability
+    $object->{title} =~ s/\R\h+//g;
+
+    if ($self->is_underlined($object->{title})) {
+        $label = Gtk2::Label->new_with_mnemonic(_($object->{title}));
+        my $obj_ref = $self->get_widget($object->{widget});
+        $label->set_mnemonic_widget($obj_ref);
+    } else {
+        $label = Gtk2::Label->new(_($object->{title}));
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $label;
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # if text should wrapped
+    $label->set_line_wrap($wrapped);
+    
+    # should text justified
+    $label->set_justify($justify) if defined($justify);
+    
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
+    
+    # set font color if defined
+    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
+
+    # position the label
+    $self->add_to_container($object->{name});
+    
+    $label->show();
+}
+
+
+# ---------------------------------------------------------------------
+# add_progressbar(  Name => <name>,                     <= widget name - must be unique
+#                   Pos => [pos_x, pos_y], 
+#                   Size => [width, height],            <= Optional
+#                   Mode => <mode>,                     <= percent, pulse
+#                   Steps => <>
+#                   orient => <orientation>,            <= 
+#                   Timer => <update_time>              <= in ms
+#                   Align => <align>                    <= Optional (left, right)
+#                   Tip => <tooltip-text>)              <= Optional
+#)
+# ---------------------------------------------------------------------
+
+
+
+
+#                   Step => <step_in/decrease>      
+#                   Align => <align>                <= Optional (left, right)
+#                   Climbrate => <from 0.0 to 1.0>  <= Optional (default: 0.0)
+#                   Digits => <used_digits>         <= Optional (default: 0)
+
+# ---------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------
+# add_statusbar(Name => <name>,                 <= widget name - must be unique
+#               Pos => [pos_x, pos_y], 
+#               Size => [width, height],        <= Optional. Default is complete window width
+#               Timeout => <show_time>,         <= Optional. Default: 0
+#               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
+#               Sens => <sensitive>             <= Optional. Default: 1
+# ---------------------------------------------------------------------
+sub add_statusbar($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Statusbar';
+    
+
+    # statusbar specific fields
+    $object->{sbar_stack} = [];
+    $object->{sbar_last_msg_id} = undef;
+    $object->{sbar_timeout} = defined($params{'timeout'}) ? $params{'timeout'} : 0;
+    my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+    
+    # create vbox to put statusbar in (for showing)
+    my $vbox = Gtk2::VBox->new();
+    
+    # check if width and height is given
+    if ($object->{width} || $object->{height}) {
+        $vbox->set_size_request ($object->{width}, $object->{height});
+    } else {
+        # get the width of the main window
+        my $win_width = $self->get_object($self->{name})->{width};
+        
+        if ($win_width != 0) {
+            # add 2 pixels to pos_x for centering
+            $object->{pos_x} += 2;
+            
+            # create statusbar width (-2 is needed because of the vertical scrollbar)
+            my $sbar_width = $win_width - 2*$object->{pos_x} - 2;
+            $vbox->set_size_request ($sbar_width, -1);
+        }
+    }
+
+    # create statusbar
+    my $statusbar = Gtk2::Statusbar->new();
+    # no resize grip
+    $statusbar->set_has_resize_grip(0);
+    # get context id
+    my $context_id = $statusbar->get_context_id($object->{name});
+    $object->{contextid} = $context_id;
+    $statusbar->show();
+    
+    # for later manipulation we put the statusbar reference to the statusbar object
+    $object->{statusbar} = $statusbar;
+    
+    $vbox->add($statusbar);
+    
+    # add vbox instead of statusbar to object
+    $object->{ref} = $vbox;
+    
+    # add object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # position the statusbar
+    $self->add_to_container($object->{name});
+
+    # get size
+    my $req = $vbox->size_request();
+    $object->{width} = $req->width;
+    $object->{height} = $req->height;
+
+     # set sensitive state
+    $object->{ref}->set_sensitive($sensitive) if defined($sensitive);
+    
+    $vbox->show();
+}
+
+
+# ---------------------------------------------------------------------
+# set_sb_text(<name>, <text>)
+# <name> is optional. If not set the main window statusbar will use, if available
+# Return value is the message id
+# ---------------------------------------------------------------------
+sub set_sb_text($@) {
+    my $self = shift;
+    my ($name, $text) = @_;
+    
+    unless (defined($text)) {
+        $text = $name;
+        $name = 'win_sbar';
+    }
+    
+    # get statusbar object
+    my $object = $self->get_object($name);
+    
+    # show message
+    my $msg_id = $object->{statusbar}->push($object->{contextid}, $text);
+    push(@{$object->{sbar_stack}}, {$msg_id => $text});
+    unless ($object->{sbar_timeout} == 0) {
+        Glib::Timeout->add($object->{sbar_timeout},
+            sub{
+                $self->remove_sb_text($name, $msg_id);
+            });
+    }
+    return $msg_id;
+}
+
+# ---------------------------------------------------------------------
+# remove_sb_text(<name>, <text>|<msg-id>)
+# <name> is optional. If not set the main window statusbar will use, if available
+# <text> is optional. If not set the last message will remove
+# ---------------------------------------------------------------------
+sub remove_sb_text($@) {
+    my $self = shift;
+    my ($name, $text_or_id) = @_;
+    
+    unless (defined($text_or_id)) {
+        $text_or_id = $name if defined($name);
+        $name = 'win_sbar';
+    }
+    
+    # get statusbar object
+    my $object = $self->get_object($name);
+    
+    if (defined($text_or_id)) {
+        my $msg_id;
+        my $msg;
+        if (looks_like_number($text_or_id)) {
+            my @new_sb_stack;
+            foreach my $i (0..$#{$object->{sbar_stack}}) {
+                foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+                    unless ($key == $text_or_id) {
+                        push(@new_sb_stack, {$key => $object->{sbar_stack}[$i]{$key}});
+                    } else {
+                        $object->{statusbar}->remove($object->{contextid}, $text_or_id);
+                    }
+                }
+            }
+            $object->{sbar_stack} = \@new_sb_stack;
+        } else {
+            if ($text_or_id eq 'last') {
+                $object->{statusbar}->pop($object->{contextid});
+                pop(@{$object->{sbar_stack}});
+            } else {
+                my @new_sb_stack;
+                foreach my $i (0..$#{$object->{sbar_stack}}) {
+                    foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+                        unless ($object->{sbar_stack}[$i]{$key} eq $text_or_id) {
+                            push(@new_sb_stack, {$key => $object->{sbar_stack}[$i]{$key}});
+                        } else {
+                            $object->{statusbar}->remove($object->{contextid}, $key);
+                        }
+                    }
+                }
+                $object->{sbar_stack} = \@new_sb_stack;
+            }
+        }
+    } else {
+        $object->{statusbar}->pop($object->{contextid});
+        pop(@{$object->{sbar_stack}});
+    }
+}
+
+# ---------------------------------------------------------------------
+# clear_sb_stack(<name>)
+# <name> is optional. If not set the main window statusbar will use, if available
+# ---------------------------------------------------------------------
+sub clear_sb_stack($@) {
+    my $self = shift;
+    my $name = @_;
+    
+    unless (defined($name)) {
+        $name = 'win_sbar';
+    }
+    
+    # get statusbar object
+    my $object = $self->get_object($name);
+    
+    # remove from the beginning
+    foreach my $i (0..$#{$object->{sbar_stack}}) {
+        foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
+            $object->{statusbar}->remove($object->{contextid}, $key);
+        }
+    }
+    $object->{sbar_stack} = [];
+}
+
+
+######################################################################
+# Buttons and Toggles
+######################################################################
+
+# ---------------------------------------------------------------------
+# add_button(   Name   => <name>,                  <= Name of the button. Must be unique
+#               Pos    => [pos_x, pos_y], 
+#               Title  => <title>,
+#               Font   => [family, size, weight]   <= Optional. Sets a title font. to use the defaults set values with undef
+#               Color  => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                               State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
+#               Size   => [width, height],         <= Optional
+#               Tip    => <tooltip-text>)          <= Optional
+#               Frame  => <frame_name>             <= Name of the frame where widget is located. Must be unique
+#               Func   => <function_click>         <= Optional. Can be set later with add_signal_handler
+#               Sig    => <signal>                 <= Optional. Only in conjunction with Func
+#               Sens   => <sensitive>              <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_button($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Button';
+
+    # button specific fields
+    my $font = $params{'font'} || undef;
+    my $color = $params{'color'}[0] || undef;
+    my $cstate = $params{'color'}[1] || undef;
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # create button
+    my $button;
+    if (defined($object->{title})) {
+        # if underline in text should use
+        if ($self->is_underlined($object->{title})) {
+            $button = Gtk2::Button->new_with_mnemonic(_($object->{title}));
+            $button->set_use_underline(1);
+        } else {
+            $button = Gtk2::Button->new_with_label(_($object->{title}));
+        }
+    } else {
+        $button = Gtk2::Button->new();
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $button;
+    
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
+    
+    # set font color if defined
+    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
+
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the button
+    $self->add_to_container($object->{name});
+
+    $button->show();
+}
+
+
+# ---------------------------------------------------------------------
+# add_check_button( Name => <name>,                 <= Name of the button. Must be unique
+#                   Pos => [pos_x, pos_y], 
+#                   Title => <title>,
+#                   Font => [family, size, weight]  <= Optional. Sets a button font. to use the defaults set values with undef
+#                   Color  => [<color>, <state>]    <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
+#                   Active => 0/1                   <= Should be active? Default: 0 (not active)
+#                   Tip => <tooltip-text>)          <= Optional
+#                   Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
+#                   Func => <function_click>        <= Optional. Can be set later with add_signal_handler
+#                   Sig => <signal>                 <= Optional. Only in conjunction with Func
+#                   Sens => <sensitive>             <= Optional. Default: 1
+#                   )
+# ---------------------------------------------------------------------
+sub add_check_button($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'CheckButton';
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+    
+    # create check button
+    my $check_button = $self->_create_check_widget($object->{name}, %params);
+
+    # position the button
+    $self->add_to_container($object->{name});
+    
+    $check_button->show();
+}
+
+
+# ---------------------------------------------------------------------
+# _create_check_widget(<name>, <params>)
+# ---------------------------------------------------------------------
+sub _create_check_widget($@) {
+    my $self = shift;
+    my ($name, %params) = @_;
+    
+    # get object
+    my $object = $self->get_object($name);
+    
+    # check button/item menu specific fields
+    my $active = $params{'active'} || 0;
+    my $font = $params{'font'} || undef;
+    my $color = $params{'color'}[0] || undef;
+    my $cstate = $params{'color'}[1] || undef;
+    
+    # create check button/item menu
+    my $check_widget;
+    if (defined($object->{title})) {
+        # if underline in text should use
+        if ($self->is_underlined($object->{title})) {
+            if ($object->{type} eq 'CheckButton') {
+                $check_widget = Gtk2::CheckButton->new_with_mnemonic(_($object->{title}));
+            } else {
+                $check_widget = Gtk2::CheckMenuItem->new_with_mnemonic(_($object->{title}));
+            }
+            $check_widget->set_use_underline(1);
+        } else {
+            if ($object->{type} eq 'CheckButton') {
+                $check_widget = Gtk2::CheckButton->new_with_label(_($object->{title}));
+            } else {
+                $check_widget = Gtk2::CheckMenuItem->new_with_label(_($object->{title}));
+            }
+        }
+    } else {
+        if ($object->{type} eq 'CheckButton') {
+            $check_widget = Gtk2::CheckButton->new();
+        } else {
+            $check_widget = Gtk2::CheckMenuItem->new();
+        }
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $check_widget;
+    
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
+
+    # set font color if defined
+    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
+
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # set check button/item menu active
+    $check_widget->set_active($active);
+    
+    return $check_widget;
+}
+
+# ---------------------------------------------------------------------
+# add_radio_button( Name    => <name>,                  <= Name of the button. Must be unique
+#                   Pos     => [pos_x, pos_y], 
+#                   Title   => <title>,
+#                   Font    => [family, size, weight]   <= Optional. Sets a button font. to use the defaults set values with undef
+#                   Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
+#                   Group   => <button_group>,          <= Name of the buttongroup. Must be unique
+#                   Active  => 0/1                      <= Which is the active button. Default: 0 (not active)
+#                   Tip     => <tooltip-text>)          <= Optional
+#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
+#                   Func    => <function_click>         <= Optional. Can be set later with add_signal_handler
+#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
+#                   Sens    => <sensitive>              <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_radio_button($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'RadioButton';
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+    
+    # create radio button
+    my $radio_button = $self->_create_radio_widget($object->{name}, %params);
+    
+    # position the radio button
+    $self->add_to_container($object->{name});
+    
+    $radio_button->show();
+}
+
+# ---------------------------------------------------------------------
+# _create_radio_widget(<name>, <params>)
+# ---------------------------------------------------------------------
+sub _create_radio_widget($@) {
+    my $self = shift;
+    my ($name, %params) = @_;
+    
+    # get object
+    my $object = $self->get_object($name);
+    
+    # radio button/menu item specific fields
+    $object->{group} = $params{'group'} || undef;
+    my $active = $params{'active'} || 0;
+    my $font = $params{'font'} || undef;
+    my $color = $params{'color'}[0] || undef;
+    my $cstate = $params{'color'}[1] || undef;
+    
+    # create radio button/menu item
+    my $radio_widget;
+    
+    # get the last button/menu item in the group
+    my $group = [];
+    my $last = undef;
+    if (exists($self->{groups}->{$object->{group}})) {
+        $last = $self->get_widget($self->{groups}->{$object->{group}}[-1]);
+        #$group = $last->get_group();
+    } else {
+        $self->{groups}->{$object->{group}} = [];
+    }
+    
+    if (defined($object->{title})) {
+        if ($object->{type} eq 'RadioButton') {
+            $radio_widget = Gtk2::RadioButton->new($last, _($object->{title}));
+        } else {
+            $radio_widget = Gtk2::RadioMenuItem->new($last, _($object->{title}));
+        }
+        
+        # if underline in text should use
+        if ($self->is_underlined($object->{title})) {
+            $radio_widget->set_use_underline(1);
+        }
+        
+    } else {
+        if ($object->{type} eq 'RadioButton') {
+            $radio_widget = Gtk2::RadioButton->new($last);
+        } else {
+            $radio_widget = Gtk2::RadioMenuItem->new($last);
+        }
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $radio_widget;
+    
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
+
+    # set font color if defined
+    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
+
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # add button/menu item to buttons list
+    push(@{$self->{groups}->{$object->{group}}}, $object->{name});
+    
+    # set radio button/menu item active
+    $radio_widget->set_active($active);
+    
+    return $radio_widget;
+}
+
+
+# ---------------------------------------------------------------------
+# get group or group name from radio button/menu
+# get_group(<name>, ["Name"])
+# ---------------------------------------------------------------------
+sub get_group($@) {
+    my $self = shift;
+    my ($name, $type) = @_;
+    
+    my $object = $self->get_object($name);
+    
+    if ($object->{type} =~ /^Radio/) {
+        unless (defined($type)) {
+            # get radio button/menu group object
+            return $object->{ref}->get_group();
+        } else {
+            # get radio button/menu group name
+            return $object->{group};
+        }
+    } else {
+        $self->internal_die($object, "Can't get group - wrong type \"$object->{type}\"!");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set_group(<name>, <group/group_name>)
+# Sets a new group on the radio button _<name>_. 
+# It can be used an existing group object or group name.
+# ---------------------------------------------------------------------
+# TODO: how to set group? a single widget, all of an old group or what?
+sub set_group($@) {
+    my $self = shift;
+    my $hme = @_;
+    print "set_group not implemented yet.\n";
+}
+
+
+# ---------------------------------------------------------------------
+# add_link_button(  Name    => <name>,                  <= Name of the button. Must be unique
+#                   Pos     => [pos_x, pos_y], 
+#                   Title   => <title>,
+#                   Font    => [family, size, weight]   <= Optional. Sets a title font. to use the defaults set values with undef
+#                   Color  => [<color>, <state>]        <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
+#                   Size    => [width, height],         <= Optional
+#                   Uri     => <Uri-text>)              <= A valid URI. It is the tooltip as well.
+#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
+#                   Func    => <function_click>         <= Optional. Can be set later with add_signal_handler
+#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
+#                   Sens    => <sensitive>              <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_link_button($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'LinkButton';
+    
+    # link button specific fields
+    my $uri = $params{'uri'} || undef;
+    my $font = $params{'font'} || undef;
+    my $color = $params{'color'}[0] || undef;
+    my $cstate = $params{'color'}[1] || undef;
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # create link button
+    my $link_button;
+    if (defined($uri)) {
+        $link_button = Gtk2::LinkButton->new($uri, _($object->{title}));
+    } else {
+        $self->internal_die($object, "No Uri defined!");
+    }
+
+    # set relief to none
+    $link_button->set_relief ('none');
+    
+    # add widget reference to widget object
+    $object->{ref} = $link_button;
+    
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
+
+    # set font color if defined
+    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
+
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the button
+    $self->add_to_container($object->{name});
+
+    $link_button->show();
+}
+
+
+######################################################################
+# Numeric/Text Data Entry
+######################################################################
+
+# ---------------------------------------------------------------------
+# add_entry (   Name => <name>,                 <= object name - must be unique
+#               Title => <title>,
+#               Font => [family, size, weight]  <= Optional. Sets a text entry font. to use the defaults set values with undef
+#               Pos => [pos_x, pos_y], 
+#               Size => [width, height],
+#               Align => <xalign>               <= Optional: left (default), right
+#               Tip => <tooltip-text>)          <= Optional
+#               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
+#               Func => <function_click>        <= Optional. Can be set later with add_signal_handler
+#               Sig => <signal>                 <= Optional. Only in conjunction with Func
+#               Sens => <sensitive>             <= Optional. Default: 1
+#               )
+# ---------------------------------------------------------------------
+sub add_entry($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Entry';
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # entry specific fields
+    my $align = $params{'align'} || 0;
+    my $font = $params{'font'} || undef;
+    
+    # create entry
+    my $entry = Gtk2::Entry->new();
+    if ($object->{title}) {
+        $entry->set_text(_($object->{title}));
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $entry;
+    
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
+
+    # add handler 'changed' to update object every time text is changing
+    $self->add_signal_handler($object->{name}, 'changed', \&_on_changed_update, $self);
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # check if alignment for text is set
+    if ($align eq 'right') {$entry->set_alignment(1);}
+    
+    # position the entry
+    $self->add_to_container($object->{name});
+    
+    $entry->show();
+}
+
+
+# ---------------------------------------------------------------------
+# add_slider(   Name        => <name>,              <= widget name - must be unique
+#               Pos         => [pos_x, pos_y], 
+#               Size        => [width, height],     <= Optional
+#               Orient      => <orientation>        <= orientation of the slider (horizontal, vertical)
+#               Start       => <start_value>,       <= Optional. Default: 0.0
+#               Min         => <min_value>,         <= Double
+#               Max         => <max_value>,         <= Double
+#               Step        => <step_in/decrease>   <= Double
+#               DrawValue   => <1/0>                <= Optional. Default: 1
+#               ValuePos    => <value_position>     <= Optional. Default: top (left, right, bottom)
+#               Digits      => <digits>             <= Optional. Default: 0 (1 digit)
+#               Tip         => <tooltip-text>)      <= Optional
+#               Frame       => <frame_name>         <= Name of the frame where widget is located. Must be unique
+#               Func        => <function_click>     <= Optional. Can be set later with add_signal_handler
+#               Sig         => <signal>             <= Optional. Only in conjunction with Func
+#               Sens        => <sensitive>          <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+# TODO: If a draw value is active the slider is moved to another position.
+#       Have to be fixed ?
+# ---------------------------------------------------------------------
+sub add_slider($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Slider';
+
+    $self->_create_range_widget($object, %params);
+}
+
+
+# ---------------------------------------------------------------------
+# add_spin_button(  Name    => <name>,              <= widget name - must be unique
+#                   Pos     => [pos_x, pos_y], 
+#                   Size    => [width, height],     <= Optional
+#                   Start   => <start_value>,       <= Optional. Default: 0.0
+#                   Min     => <min_value>,         <= Double
+#                   Max     => <max_value>,         <= Double
+#                   Step    => <step_in/decrease>   <= Double
+#                   Page    => <page_in/decrease>   <= Double
+#                   Snap    => <snap_to_tick>       <= Optional
+#                   Align   => <align>              <= Optional (left, right)
+#                   Rate    => <from 0.0 to 1.0>    <= Optional. Default: 0.0
+#                   Digits  => <used_digits>        <= Optional. Default: 0 (1 digit)
+#                   Tip     => <tooltip-text>       <= Optional
+#                   Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
+#                   Func    => <function_click>     <= Optional. Can be set later with add_signal_handler
+#                   Sig     => <signal>             <= Optional. Only in conjunction with Func
+#                   Sens    => <sensitive>          <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_spin_button($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'SpinButton';
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # spin button specific fields
+    my $start = $params{'start'} || 0.0;
+    my $min = $params{'minimum'} || 0.0;
+    my $max = $params{'maximum'} || 0.0;
+    my $step = $params{'step'} || 0;
+    my $page = $params{'page'} || 0;
+    my $align = $params{'align'} || 0;
+    my $snap = $params{'snap'} || 0;
+    my $climbrate = $params{'climbrate'} || 0.0;
+    my $digits = $params{'digits'} || 0;
+
+    # first create an adjustment widget to hold information about the range of 
+    # values that the spin button can take
+    my $adjustment = Gtk2::Adjustment->new( $start,
+                                            $min,
+                                            $max,
+                                            $step,
+                                            $page,
+                                            0.0);
+
+    # add to object for later manipulation
+    $object->{adjustment} = $adjustment;
+    
+    # now the spin button follows
+    my $spin_button = Gtk2::SpinButton->new($adjustment, $climbrate, $digits);
+    
+    # as climbrate doesn't exist to get/set we hold it in the object
+    $object->{climbrate} = $climbrate;
+    
+    # add widget reference to widget object
+    $object->{ref} = $spin_button;
+    
+    # get initial set value
+    $object->{value} = $spin_button->get_value();
+    
+    # add handler 'value-changed' to update object every time value is changing
+    $self->add_signal_handler($object->{name}, 'value-changed', \&_on_changed_update, $self);
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # spin button can contain only numeric values
+    $spin_button->set_numeric(1);
+    
+    # Sets the policy as to whether values are corrected to the nearest step increment
+    $spin_button->set_snap_to_ticks($snap);
+    
+    # set the spin button to wrap around between the upper and lower range values
+    $spin_button->set_wrap(1);
+    
+    # The update policy of the spin button
+    $spin_button->set_update_policy ('if-valid');
+    
+    # set alignment of values
+    if ($align eq 'right') {$spin_button->set_alignment(1);}
+
+    # position the spin button
+    $self->add_to_container($object->{name});
+    
+    $spin_button->show();
+}
+
+
+######################################################################
+# Multiline Text Editor
+######################################################################
+
+# ---------------------------------------------------------------------
 # add_text_view(    Name        => <name>,                  <= widget name - must be unique
 #                   Pos         => [pos_x, pos_y],
 #                   Size        => [width, height],
@@ -2153,7 +3698,7 @@ sub add_text_view($@) {
     if (defined($object->{path}) or defined($text)) {
         my $buffer = $textview->get_buffer();
         if (defined($object->{path})) {
-            $content = `cat $object->{path}` || $self->show_error($object, "Can't find $object->{path}. Check path.");
+            $content = `cat $object->{path}` || $self->internal_die($object, "Can't find $object->{path}. Check path.");
         } else {
             $content = $text;
         }
@@ -2171,9 +3716,6 @@ sub add_text_view($@) {
     # size of the text widget (scrolled window)
     $scrolled_window->set_size_request($object->{width}, $object->{height});
        
-     # for later manipulation we put the $textview reference to the $textview object
-    $object->{textview} = $textview;
- 
     # change font if set
     $self->set_font($object->{name}, $font) if defined($font);
     
@@ -2190,6 +3732,400 @@ sub add_text_view($@) {
     $self->add_to_container($object->{name});
 
     $scrolled_window->show();
+}
+
+
+# ---------------------------------------------------------------------
+# get textview object
+# get_textview(<name> [, <keyname>])
+# ---------------------------------------------------------------------
+sub get_textview($@) {
+    my $self = shift;
+    my $name = shift;
+    my $key = _extend(lc(shift)) || undef;
+    my $textview = 'Error';
+
+    # get textview object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+    if ($type =~ /Textview/) {
+        # get textview reference
+        if ($key eq 'textview' or $key == undef) {$textview = $object->{textview};}
+        # get text buffer
+        elsif ($key eq 'textbuffer') {$textview = $object->{textbuf};}
+        # get path
+        elsif ($key eq 'path') {$textview = $object->{path};}
+        # not supported
+        elsif ($key =~ /margin$|wrapped|justify/) {
+            $self->internal_die($object, "'get_textview' returns textbuffer/textview reference only. Use 'get_value' for \"$key\" instead.");
+        }
+    
+        unless ($textview eq 'Error') {
+            return $textview;
+        } else {
+            $self->internal_die($object, "Unknown parameter \"$key\".");
+        }
+    } else {
+        $self->internal_die($object, "Not a textview object.");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set_textview( Name => <name>,                     <= widget name - must be unique
+#               Path => <file_path>,
+#               Textbuf => <text_buffer_object>
+#               Text => <string>
+#)
+# ---------------------------------------------------------------------
+sub set_textview($@) {
+    my $self = shift;
+    my $name = shift;
+    my %params = $self->_normalize(@_);
+    
+    my $object = $self->get_object($name);
+    
+    # add a new content from path
+    my $buffer;
+    if (defined($params{'path'})) {
+        # add new path
+        $object->{path} = $params{'path'};
+        # add new content from path to text buffer
+        $buffer = $object->{textview}->get_buffer();
+        my $content = `cat $object->{path}` || '';
+        $buffer->set_text($content);
+        $object->{textbuf} = $buffer;
+    }
+    # add a given string
+    elsif (defined($params{'text'})) {
+        # add new content from text to text buffer
+        $buffer = $object->{textview}->get_buffer();
+        my $content = $params{'text'};;
+        $buffer->set_text($content);
+        $object->{textbuf} = $buffer;
+    }
+    # add a given text buffer
+    elsif (defined($params{'textbuffer'})) {
+        $object->{textbuf} = $params{'textbuffer'};
+    }
+    # unsupported
+    else {
+        my $rest = join(", ", keys %params);
+        $self->internal_die($object, "Unknown parameter(s): \"$rest\".");
+    }
+    
+    # add  to textview buffer
+    $object->{textview}->set_buffer($object->{textbuf});
+    
+    # show it
+    $object->{textview}->show();
+}
+
+
+######################################################################
+# Tree and List Widgets
+######################################################################
+
+# ---------------------------------------------------------------------
+# add_treeview( Name    => <name>,                      <= widget name - must be unique
+#               Type    => <List|Tree>                  <= type of treeview
+#               Pos     => [pos_x, pos_y], 
+#               Size    => [width, height],            
+#               Headers => [<Array_of_column_pairs>],   <= List of <column_text> => <column_type>. Possible column types:
+#                                                          text    normal text strings
+#                                                          int     integer values
+#                                                          double  double-precision floating point values
+#                                                          bool    boolean values, displayed as toggle-able checkboxes
+#                                                          scalar  a perl scalar, displayed as a text string by default
+#                                                          pixbuf  a Gtk2::Gdk::Pixbuf
+#               Data    => [<Array_of_arrays>],         <= Optional. Can be set later with set_data_array()
+#               Treeview=> <Gtk2::TreeView>             <= Optional. An existing Gtk2::TreeView object
+#               Sens    => <sensitive>                  <= Optional. Default: 1
+#               Mode    => <selection mode>             <= Optional. Set selection mode. Default is 'single'. Other
+#                                                          possibilities: 'none', 'browse' and 'multiple'.
+#)
+# ---------------------------------------------------------------------
+sub add_treeview($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+
+    # check for correct type
+    my $tview_type = $params{'type'} || undef;
+    if ($tview_type =~ /List|Tree/) {
+        $object->{type} = $tview_type;
+    } else {
+        unless (defined($tview_type)) {
+            $self->internal_die("No treeview type defined! Possible values are: 'List' or 'Tree'.");
+        } else {
+            $self->internal_die($object, "Wrong treeview type defined! Possible values are: 'List' or 'Tree'.");
+        }
+    }
+
+    # treeview specific fields
+    $object->{headers} = $params{'headers'} || $self->internal_die($object, "No column header(s) defined!");
+    $object->{data} = $params{'data'} || undef;
+    my $treeview = $params{'treeview'} || undef;
+    my $selection_mode = $params{'mode'} || undef;
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    my $list_or_tree;
+    if ($tview_type eq 'List') {
+        # create list
+        if (defined($treeview)) {
+            $list_or_tree = Gtk2::Ex::Simple::List->new_from_treeview($treeview, @{$object->{headers}});
+        } else {
+            $list_or_tree = Gtk2::Ex::Simple::List->new(@{$object->{headers}});
+        }
+    } else {
+        if (defined($treeview)) {
+            $list_or_tree = Gtk2::Ex::Simple::Tree->new_from_treeview($treeview, @{$object->{headers}});
+        } else {
+            $list_or_tree = Gtk2::Ex::Simple::Tree->new(@{$object->{headers}});
+        }
+    }
+
+    # for later manipulation we put the list/tree reference to the treeview object
+    $object->{treeview} = $list_or_tree;
+    
+    # if data available
+    if (defined($object->{data})) {
+        $list_or_tree->set_data_array($object->{data});
+        $object->{data} = $list_or_tree->{data};
+    }
+    
+    # if selection mode is set
+    if (defined($selection_mode)) {
+        my $treeselection = $list_or_tree->get_selection();
+        $treeselection->set_mode($selection_mode);
+    }
+    
+    # create a scrolled window to display scrollbars
+    my $scrolled_window = Gtk2::ScrolledWindow->new (undef, undef);
+    $scrolled_window->set_policy ('automatic', 'automatic');
+
+    # size of the list/tree widget (scrolled window)
+    $scrolled_window->set_size_request($object->{width}, $object->{height});
+       
+    # add list/tree to scrolled window
+    $scrolled_window->add_with_viewport($list_or_tree);
+    
+    # add scrolled window (parent) to window objects list
+    $object->{ref} = $scrolled_window;
+
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the list/tree
+    $self->add_to_container($object->{name});
+
+    $scrolled_window->show();
+}
+
+
+# ---------------------------------------------------------------------
+# get treeview object
+# get_treeview(<name> [, <keyname>])
+# ---------------------------------------------------------------------
+sub get_treeview($@) {
+    my $self = shift;
+    my $name = shift;
+    my $key = shift;
+    $key = _extend(lc($key)) if defined($key);
+    my $treeview = 'Error';
+
+    # get treeview object
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+    if ($type =~ /List|Tree/) {
+        if (defined($key)) {
+            # get list reference
+            if ($key eq 'list') {$treeview = $object->{treeview};}
+            # get tree reference
+            elsif ($key eq 'tree') {$treeview = $object->{treeview};}
+            # not supported
+            elsif ($key =~ /editable|path|cell/) {
+                $self->internal_die($object, "'get_treeview' returns $type reference only. Use 'get_value' for \"$key\" instead.");
+            }
+        } else {
+            $treeview = $object->{treeview};
+        }
+    
+        unless ($treeview eq 'Error') {
+            return $treeview;
+        } else {
+            $self->internal_die($object, "Unknown parameter \"$key\". Possible values are: list or tree.");
+        }
+    } else {
+        $self->internal_die($object, "Not a treeview object.");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# row manipulation
+# modify_list_data(<name>, <command> => <modification_array>)
+# <command> are: 'push' 'pop', 'unshift', 'shift', 'delete', 'clear'
+# cell manipulation
+# modify_list_data(<name>, set => [<row|iter>, <column>, <modification>])
+# ---------------------------------------------------------------------
+sub modify_list_data($@) {
+    my $self = shift;
+    my $name = shift;
+    my %cmd_hash = @_;
+    my @keys = keys %cmd_hash;
+    my $command = $keys[0];
+    my $modification = $cmd_hash{$command};
+    $command = _extend(lc($command));
+    my $rc = 1;
+    
+    # get list object
+    my $list = $self->get_object($name);
+    
+    # check if set or others
+    if ($command eq 'set') {
+        my $row_iter = $$modification[0];
+        my $column = $$modification[1];
+        # check if first part is an iter object
+        if (ref($row_iter) =~ /Gtk2::TreeIter/) {
+            $list->{treeview}->set($row_iter, $column, $$modification[2]);
+        } else {
+            $list->{data}[$row_iter][$column] = $$modification[2];
+        }
+        $rc = 0;
+    } else {
+        unless (defined($modification)) {
+            # clear array
+            if ($command eq 'clear') {@{$list->{data}} = []; $rc = 0;}
+            # pop a row off of the end of the list
+            elsif ($command eq 'pop') {$rc = pop(@{$list->{data}});}
+            # shift a row off of the beginning of the list
+            elsif ($command eq 'shift') {$rc = shift(@{$list->{data}});}
+        } else {
+            # push a row onto the end of the list
+            if ($command eq 'push') {push(@{$list->{data}}, $modification); $rc = 0;}
+            # unshift a row onto the beginning of the list
+            elsif ($command eq 'unshift') {unshift(@{$list->{data}}, $modification); $rc = 0;}
+            # delete the row at index $n, 0 indexed
+            elsif ($command eq 'delete') {splice(@{$list->{data}}, $modification, 1); $rc = 0;}
+        }
+    }
+
+    unless ($rc == 1) {
+        return $rc;
+    } else {
+        $self->internal_die($list, "Unknown parameter \"$command\". Possible values are: 'push' 'pop', 'unshift', 'shift', 'delete' or 'clear'.");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# modify_tree_data(<name>, <command> => <path>, <modification>)
+# modify_tree_data(<name>, add => <path>, [x,y,z,...])
+# modify_tree_data(<name>, change => <path>, <index> => <value>)
+# modify_tree_data(<name>, delete => <path>)
+# <command> are: 'add', 'delete', change
+# <path> can be a treepath or treepath string
+# ---------------------------------------------------------------------
+sub modify_tree_data($@) {
+    my $self = shift;
+    my $name = shift;
+    my (%cmd_hash, $modification) = @_;
+    
+#    $command = _extend(lc($command));
+#    my $rc = 1;
+    
+    # get tree object
+    my $tree = $self->get_object($name);
+    
+#    unless (defined($modification)) {
+#        # delete entry
+#        if ($command eq 'clear') {@{$list->{data}} = []; $rc = 0;}
+#        # pop a row off of the end of the list
+#        elsif ($command eq 'pop') {$rc = pop(@{$list->{data}});}
+#        # shift a row off of the beginning of the list
+#        elsif ($command eq 'shift') {$rc = shift(@{$list->{data}});}
+#    } else {
+#        # push a row onto the end of the list
+#        if ($command eq 'push') {push(@{$list->{data}}, $modification); $rc = 0;}
+#        # unshift a row onto the beginning of the list
+#        elsif ($command eq 'unshift') {unshift(@{$list->{data}}, $modification); $rc = 0;}
+#        # delete the row at index $n, 0 indexed
+#        elsif ($command eq 'delete') {splice(@{$list->{data}}, $modification, 1); $rc = 0;}
+#    }
+#    unless ($rc == 1) {
+#        return $rc;
+#    } else {
+#        $self->internal_die($list, "Unknown parameter \"$command\". Possible values are: 'push' 'pop', 'unshift', 'shift', 'delete' or 'clear'.");
+#    }
+}
+
+
+######################################################################
+# Combo Box and Menus
+######################################################################
+
+# ---------------------------------------------------------------------
+# add_combo_box(    Name => <name>,                     <= widget name - must be unique
+#                   Pos => [pos_x, pos_y], 
+#                   Size => [width, height],            <= Optional
+#                   Data => [Array_of_values>],
+#                   Start => <start_value>,
+#                   Columns = <wrap_list_to_x_columns>  <= Optional
+#                   Tip => <tooltip-text>)              <= Optional
+#                   Frame => <frame_name>               <= Name of the frame where widget is located. Must be unique
+#                   Func => <function_click>            <= Optional. Can be set later with add_signal_handler
+#                   Sig => <signal>                     <= Optional. Only in conjunction with Func
+#                   Sens => <sensitive>                 <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_combo_box($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'ComboBox';
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # combo box specific fields
+    $object->{data} = $params{'data'} || [];
+    my $start = $params{'start'} || 0;
+    my $columns = $params{'columns'} || undef;
+
+    # create Gtk2::TreeModel object
+    my $model = Gtk2::ListStore->new(qw/Glib::String/);
+    
+    # add data to ListStore object
+    foreach(@{$object->{data}}) {
+        my $iter = $model->append;
+        $model->set($iter,0 => _($_));
+    }   
+    
+    # create combo box
+    my $combo_box = Gtk2::ComboBox->new_text();
+    $combo_box->set_model($model);
+    
+    # add widget reference to widget object
+    $object->{ref} = $combo_box;
+    
+    # set active item
+    $combo_box->set_active($start);
+    
+    # check if list should wrap into x columns
+    $combo_box->set_wrap_width($columns) if defined($columns);
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the combo box
+    $self->add_to_container($object->{name});
+    
+    $combo_box->show();
 }
 
 
@@ -2418,10 +4354,10 @@ sub add_menu_item($@) {
         $object->{ref}->set_sensitive($sensitive) if defined($sensitive);
     } else {
         if ($object->{type} eq 'CheckMenuItem') {
-            $menu_item = $self->create_check_widget($object->{name}, %params);
+            $menu_item = $self->_create_check_widget($object->{name}, %params);
         }
         elsif ($object->{type} eq 'RadioMenuItem') {
-            $menu_item = $self->create_radio_widget($object->{name}, %params);
+            $menu_item = $self->_create_radio_widget($object->{name}, %params);
         }
     }
     
@@ -2430,296 +4366,102 @@ sub add_menu_item($@) {
 }
 
 
+######################################################################
+# Selectors (File/Font)
+######################################################################
+
 # ---------------------------------------------------------------------
-# add_notebook( Name => <name>,                     <= widget name - must be unique
-#               Pos => [pos_x, pos_y],
-#               Size => [width, height],
-#               Tabs => <position>               	<= Optional. Default: top (left, right, bottom, none)
-#               Scrollable => 1/0                   <= Optional. Default: 1
-#               Popup => 0/1)                       <= Optional. Default: 0
-#               Frame => <frame_name>               <= Name of the frame where widget is located. Must be unique
-#               Sens => <sensitive>                 <= Optional. Default: 1
+# add_filechooser_button(   Name    => <name>,              <= Name of the button. Must be unique
+#                           Pos     => [pos_x, pos_y], 
+#                           Title   => <title>,
+#                           Size    => [width, height],     <= Optional
+#                           Tip     => <tooltip-text>       <= Optional
+#                           Action  => <open_mode>          <= The open modes are: 'open' and 'select-folder'.
+#                           Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
+#                           File    => <file_path>          <= Optional. Set file for 'open' action
+#                           Filter  => <pattern|mimetype> | [<name>, <pattern|mimetype>]  <= Optional. Sets the current file filter for 'open' action
+#                           Folder  => <directory>          <= Optional. Set directory for 'select-folder' action or if no file path is set for 'open' action
+#                           Func    => <function>           <= Optional. Can be set later with add_signal_handler
+#                           Sig     => <signal>             <= Optional. Only in conjunction with Func
+#                           Sens    => <sensitive>          <= Optional. Default: 1
+#)
 # ---------------------------------------------------------------------
-sub add_notebook($@) {
+sub add_filechooser_button($@) {
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
-    $object->{type} = 'Notebook';
+    $object->{type} = 'FileChooserButton';
+    
+    # filechooser button specific fields
+    my $action = $params{'action'} || undef;
+    my $file = $params{'file'} || undef;
+    my @filter = (undef, undef);
+    if (defined($params{'filter'})) {
+        if (ref($params{'filter'}) eq 'ARRAY') {
+            $filter[0] = $params{'filter'}[0];
+            $filter[1] = $params{'filter'}[1];
+        } else {
+            $filter[1] = $params{'filter'};
+        }
+    }
+    $object->{filter} = undef;
+    my $folder = $params{'folder'} || undef;
 
     # add widget object to window objects list
     $self->{objects}->{$object->{name}} = $object;
 
-    # notebook specific fields
-    my $scrollable = defined($params{'scrollable'}) ? $params{'scrollable'} : 1;
-    $object->{popup} = $params{'popup'} || 0;
-    my $tabs = $params{'tabs'} || 'top';
-
-    # create notebook
-    my $notebook = Gtk2::Notebook->new();
-    
-    # scrollable?
-    $notebook->set_scrollable($scrollable); 
-    
-    # popup available?
-    if ($object->{popup}) {
-        $notebook->popup_enable();
+    # create filechooser button
+    my $filechooser_button;
+    if (defined($action)) {
+        $filechooser_button = Gtk2::FileChooserButton->new(_($object->{title}), $action);
     } else {
-        $notebook->popup_disable();
+        $self->internal_die($object, "No action defined!");
+    }
+
+    # set file or folder if defined
+    if ($action eq 'open') {
+        if (defined($file)) {
+            $filechooser_button->set_filename($file);
+        } else {
+            $filechooser_button->set_current_folder($folder) if defined($folder);
+        }
+    } else {
+        $filechooser_button->set_current_folder($folder) if defined($folder);
     }
     
-    # set the tabs position or no tabs
-    unless ($tabs eq 'none') {
-        $notebook->set_show_tabs(1);
-        $notebook->set_tab_pos($tabs);
-    } else {
-        $notebook->set_show_tabs(0);
+    # set filter if defined
+    if (defined($filter[1])) {
+        my $file_filter = Gtk2::FileFilter->new();
+        # filter type name
+        if (defined($filter[0])) {
+            $file_filter->set_name($filter[0]);
+        }
+        # mimetype or pattern
+        if ($filter[1] =~ /\//) {
+            $file_filter->add_mime_type($filter[1]);
+        } else {
+            $file_filter->add_pattern($filter[1]);
+        }
+        # add filter to object for later manipulation
+        $object->{filter} = $file_filter;
+        # add filter to button
+        if (defined($filter[0])) {
+            $filechooser_button->add_filter($file_filter);
+        } else {
+            $filechooser_button->set_filter($file_filter);
+        }
     }
     
-    # add notebook to window objects list
-    $object->{ref} = $notebook;
-
+    # add widget reference to widget object
+    $object->{ref} = $filechooser_button;
+    
     # set some common functions: size, tooltip and sensitive state
     $self->_set_commons($object->{name}, %params);
     
-    # position the notebook
+    # position the button
     $self->add_to_container($object->{name});
 
-    $notebook->show();
-}
-
-
-# ---------------------------------------------------------------------
-# add_nb_page(  Name        => <name>,                  <= widget name - must be unique
-#               Title       => <title>,
-#               Font        => [family, size, weight]   <= Optional. Sets the title font. to use the defaults set values with undef
-#               Color       => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Notebook    => <notebook_name>,         <= notebook name - must be unique
-#               Pos_n       => <number>,                <= Optional. Starts with 0
-#               Tip         => <tooltip-text>)          <= Optional
-#               Sens        => <sensitive>              <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_nb_page($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'NotebookPage';
-
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # notebook page specific fields
-    $object->{notebook} = $params{'notebook'};
-    my $pos_n = defined($params{'positionnumber'}) ? $params{'positionnumber'} : undef;
-    my $font = $params{'font'} || undef;
-    my $color = $params{'color'}[0] || undef;
-    my $cstate = $params{'color'}[1] || undef;
-
-    # Create a fixed container
-    my $fixed = new Gtk2::Fixed();
-    
-    # add it to the containers hash
-    $self->{containers}->{$object->{name}} = $fixed;
-    
-    # create a viewport for the fixed container
-    my $viewport = Gtk2::Viewport->new(undef, undef);
-    # change its shadow to 'none' because default is 'in' which looks odd
-    $viewport->set_shadow_type('none');
-    # for later manipulation add the viewport to the page object
-    $object->{viewport} = $viewport;
-
-    # create a scrolled window to display scrollbars
-    # if the widgets needs more place as the notebook provides
-    my $scrolled_window = Gtk2::ScrolledWindow->new(undef, undef);
-    $scrolled_window->set_policy ('automatic', 'automatic');
-    
-    # add fixed container to the viewport
-    $viewport->add($fixed);
-    # add the viewport to the scrolled window
-    $scrolled_window->add($viewport);
-
-    # add scrolled window as page reference to widget object
-    $object->{ref} = $scrolled_window;
-    
-    # show all three
-    $scrolled_window->show();
-    $viewport->show();
-    $fixed->show();
-
-    # create label for notebook tab because the default label
-    # in the page isn't available at creation date and thus
-    # tooltip can't bind to that
-	my $label = Gtk2::Label->new(_($object->{title}));
-
-    # add label widget of the page to object if avaliable
-    $object->{pagelabel} = $label;
-
-    # add page to notebook
-    my $notebook = $self->get_widget($object->{notebook});
-    
-    if (defined($pos_n)) {
-        $notebook->insert_page($object->{ref}, undef, $pos_n);
-    } else {
-        $notebook->append_page($object->{ref});
-    }
-
-    # set tab and menu label
-    $notebook->set_tab_label($object->{ref}, $object->{pagelabel});
-
-    # change font if set
-    $self->set_font($object->{name}, $font) if defined($font);
-
-    # set font color if defined
-    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
-
-    # set some common functions: size, tooltip and sensitive state
-    $self->_set_commons($object->{name}, %params);
-    
-}
-
-# ---------------------------------------------------------------------
-# add_msg_dialog(   Name => <name>,                 <= widget name - must be unique
-#                   Modal => <0/1>,               	<= Optional. Default: modal (1)
-#                   DType => "<dialog_type>",       <= default: 'none'. Else 'ok', 'close', 'cancel', 'yes-no' or 'ok-cancel'
-#                   MTyp => "<message_type>",       <= 'info', 'warning', 'question', 'error' or 'other'
-#                   Icon => <path|stock|name>       <= Optional. Icon instead of message type icon
-#                   RFunc => <response_function>    <= Have to be set if nonmodal (Modal => 0) is chosen.
-#                                                      Gets the response 'ok', 'close', 'cancel', 'yes' or 'no'
-#)
-# ---------------------------------------------------------------------
-sub add_msg_dialog($@) {
-    my $self = shift;
-    my %params = $self->_normalize(@_);
-    my $object = _new_widget(%params);
-    $object->{type} = 'MessageDialog';
-    
-    # add widget object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # message dialog specific fields
-    $object->{modal} = defined($params{'modal'}) ? $params{'modal'} : 1;
-    $object->{dialogtype} = $params{'dialogtype'} || 'none';
-    $object->{messagetype} = $params{'messagetype'};
-    $object->{icon} = $params{'icon'} || undef;
-    unless ($object->{modal}) {
-        $object->{rfunc} = $params{'responsefunction'};
-    } else {
-        $object->{rfunc} = undef;
-    }
-}
-
-# ---------------------------------------------------------------------
-# show_msg_dialog(<name>, "<message_text1>", "<message_text2>")
-# or a simple one / as stand alone
-# show_msg_dialog(<dialog_type>, "<message_type>", "<message_text>")
-# returns the response ('ok', 'close', 'cancel', 'yes', 'no')
-# ---------------------------------------------------------------------
-sub show_msg_dialog($@) {
-    my $self = shift;
-    my ($name, $msg1, $msg2);
-    # is it standalone? 
-    unless (ref($self) =~ /^SimpleGtk2/) {
-        $name = $self;
-        ($msg1, $msg2) = @_;
-    } else {
-        ($name, $msg1, $msg2) = @_;
-    }
-    
-    my $object = undef;
-    my $parent_window = undef;
-    my $modal;
-    my $flags;
-    my $messagetype;
-    my $dialogtype;
-    my $color;
-    
-    # Is it a standalone message dialog?
-    my $standalone = 1 || 0 unless (ref($self) =~ /^SimpleGtk2/);
-    my $simple = 0;
-    unless ($standalone) {
-        $simple = 1 unless exists($self->{objects}->{$name});
-        $parent_window = $self->{ref};
-    } else {
-        $simple = 1;
-    }
-    
-    # is it a simple message dialog?
-    if ($simple) {
-        $flags = [qw/modal destroy-with-parent/];
-        $modal = 1;
-        $dialogtype = $msg1;
-        $messagetype = $name;
-        #'info', 'warning', 'question', 'error'
-        my $sign;
-        if ($messagetype =~ /info|question/) {
-            $color = 'blue';
-            $sign = '.'
-        } else {
-            $color = 'red';
-            $sign = '!'
-        }
-        $msg1 = "<span foreground=\"$color\" size=\"x-large\">" . _(ucfirst($messagetype)) . "$sign </span>"; 
-    } else {
-        # get object
-        $object = $self->get_object($name);
-        
-        $flags = $object->{modal} ? [qw/modal destroy-with-parent/] : 'destroy-with-parent';
-        $modal = $object->{modal};
-        $dialogtype = $object->{dialogtype};
-        $messagetype = $object->{messagetype};
-    }
-    
-    # initialize message box
-    my $msg_box = Gtk2::MessageDialog->new_with_markup($parent_window,
-                                            $flags,
-                                            $messagetype,
-                                            $dialogtype,
-                                            sprintf _("$msg1"));
-    
-    # if a second text is set
-    if (defined($msg2)) {
-        $msg_box->format_secondary_markup(_($msg2));
-    }
-    
-    # set title
-    $msg_box->set_title(_(ucfirst($messagetype)));
-        
-    if (defined($object)) {
-        # if another icon is suggested set it
-        if (defined($object->{icon})) {
-            my $icon = $object->{icon};
-            my $image;
-            # stock icon?
-            if ($icon =~ /^gtk-/) {
-                $image = Gtk2::Image->new_from_stock($icon, 'dialog');
-            }
-            # path or theme icon name?
-            elsif (-e $icon) {
-                $image = Gtk2::Image->new_from_file($icon);
-            } 
-            else {
-                $image = Gtk2::Image->new_from_icon_name($icon, 'dialog');
-            }
-            $msg_box->set_image($image);
-            $image->show();
-        }        
-    }
-        
-    # modal or not ... that's the question ^^
-    if ($modal) {
-        my $response = $msg_box->run();
-        $msg_box->destroy();
-        return $response;
-    } else {
-        # react whenever the user responds.
-        $msg_box->signal_connect(response => sub {
-            my ($self, $response, $object) = @_;
-            $self->destroy();
-            $object->{rfunc}->($response);
-        }, $object);
-        $msg_box->show_all();
-    }  
+    $filechooser_button->show();
 }
 
 
@@ -2859,13 +4601,13 @@ sub show_filechooser_dialog($@) {
             }
         }
         
-	    # initialize the simple filechooser dialog
-	    $filechooser_dialog =  Gtk2::FileChooserDialog->new( 
-    	                            $title,
-    	                            undef,
-    	                            $action,
-    	                            'gtk-cancel' => 'cancel',
-    	                            $stock_item => 'ok');
+        # initialize the simple filechooser dialog
+        $filechooser_dialog =  Gtk2::FileChooserDialog->new( 
+                                    $title,
+                                    undef,
+                                    $action,
+                                    'gtk-cancel' => 'cancel',
+                                    $stock_item => 'ok');
     }
 
     # set filter
@@ -2953,6 +4695,58 @@ sub show_filechooser_dialog($@) {
 
 
 # ---------------------------------------------------------------------
+# add_font_button(  Name    => <name>,                  <= Name of the button. Must be unique
+#                   Pos     => [pos_x, pos_y], 
+#                   Title   => <title>,                 <= Optional. The title displayed in the font dialog
+#                   Size    => [width, height],         <= Optional
+#                   Tip     => <tooltip-text>           <= Optional
+#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
+#                   Font    => [family, size, weight]   <= Optional. Sets the initial font. Font family and size are requiered if set
+#                   Func    => <function>               <= Optional. Can be set later with add_signal_handler
+#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
+#                   Sens    => <sensitive>              <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_font_button($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'FontButton';
+    
+    # font button specific fields
+    $object->{font} =  undef;
+
+    # create font button
+    my $font_button;
+    if (defined $params{'font'}) {
+        $object->{font} = scalar(@{$params{'font'}}) == 2 ? join(" ", @{$params{'font'}}) : "$params{'font'}[0] $params{'font'}[2] $params{'font'}[1]";
+        $font_button = Gtk2::FontButton->new($object->{font});
+    } else {
+        $font_button = Gtk2::FontButton->new();
+    }
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # set title
+    if (defined($object->{title})) {
+        $font_button->set_title(_($object->{title}));
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $font_button;
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the button
+    $self->add_to_container($object->{name});
+
+    $font_button->show();
+}
+
+
+# ---------------------------------------------------------------------
 # add_fontselection_dialog( Name    => <name>,                  <= widget name - must be unique
 #                           Title   => <title>,                 <= The title displayed in the font dialog
 #                           Font    => [family, size, weight]   <= Optional. Sets the initial font. Font family and size are requiered if set
@@ -2966,7 +4760,7 @@ sub add_fontselection_dialog($@) {
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
     $object->{type} = 'FontSelectionDialog';
-	
+    
     # add widget object to window objects list
     $self->{objects}->{$object->{name}} = $object;
 
@@ -3021,7 +4815,7 @@ sub show_fontselection_dialog($@) {
         # set preview text
         (defined $object->{preview}) && $fontselection_dialog->set_preview_text($object->{preview});
     } else {
-	    # initialize the simple fontselection dialog
+        # initialize the simple fontselection dialog
         $fontselection_dialog = Gtk2::FontSelectionDialog->new($title);
     }
 
@@ -3053,1738 +4847,157 @@ sub show_fontselection_dialog($@) {
 }
 
 
+######################################################################
+# Layout Containers
+######################################################################
+
 # ---------------------------------------------------------------------
-# add_statusbar(Name => <name>,                 <= widget name - must be unique
-#               Pos => [pos_x, pos_y], 
-#               Size => [width, height],        <= Optional. Default is complete window width
-#               Timeout => <show_time>,         <= Optional. Default: 0
-#               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
-#               Sens => <sensitive>             <= Optional. Default: 1
+# add_notebook( Name => <name>,                     <= widget name - must be unique
+#               Pos => [pos_x, pos_y],
+#               Size => [width, height],
+#               Tabs => <position>                  <= Optional. Default: top (left, right, bottom, none)
+#               Scrollable => 1/0                   <= Optional. Default: 1
+#               Popup => 0/1)                       <= Optional. Default: 0
+#               Frame => <frame_name>               <= Name of the frame where widget is located. Must be unique
+#               Sens => <sensitive>                 <= Optional. Default: 1
 # ---------------------------------------------------------------------
-sub add_statusbar($@) {
+sub add_notebook($@) {
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
-    $object->{type} = 'Statusbar';
-    
-
-    # statusbar specific fields
-    $object->{sbar_stack} = [];
-    $object->{sbar_last_msg_id} = undef;
-    $object->{sbar_timeout} = defined($params{'timeout'}) ? $params{'timeout'} : 0;
-    my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
+    $object->{type} = 'Notebook';
 
     # add widget object to window objects list
     $self->{objects}->{$object->{name}} = $object;
+
+    # notebook specific fields
+    my $scrollable = defined($params{'scrollable'}) ? $params{'scrollable'} : 1;
+    $object->{popup} = $params{'popup'} || 0;
+    my $tabs = $params{'tabs'} || 'top';
+
+    # create notebook
+    my $notebook = Gtk2::Notebook->new();
     
-    # create vbox to put statusbar in (for showing)
-    my $vbox = Gtk2::VBox->new();
+    # scrollable?
+    $notebook->set_scrollable($scrollable); 
     
-    # check if width and height is given
-    if ($object->{width} || $object->{height}) {
-        $vbox->set_size_request ($object->{width}, $object->{height});
+    # popup available?
+    if ($object->{popup}) {
+        $notebook->popup_enable();
     } else {
-        # get the width of the main window
-        my $win_width = $self->get_object($self->{name})->{width};
-        
-        if ($win_width != 0) {
-	        # add 2 pixels to pos_x for centering
-	        $object->{pos_x} += 2;
-	        
-	        # create statusbar width (-2 is needed because of the vertical scrollbar)
-	        my $sbar_width = $win_width - 2*$object->{pos_x} - 2;
-	        $vbox->set_size_request ($sbar_width, -1);
-        }
+        $notebook->popup_disable();
     }
+    
+    # set the tabs position or no tabs
+    unless ($tabs eq 'none') {
+        $notebook->set_show_tabs(1);
+        $notebook->set_tab_pos($tabs);
+    } else {
+        $notebook->set_show_tabs(0);
+    }
+    
+    # add notebook to window objects list
+    $object->{ref} = $notebook;
 
-    # create statusbar
-    my $statusbar = Gtk2::Statusbar->new();
-    # no resize grip
-    $statusbar->set_has_resize_grip(0);
-    # get context id
-    my $context_id = $statusbar->get_context_id($object->{name});
-    $object->{contextid} = $context_id;
-    $statusbar->show();
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
     
-	# for later manipulation we put the statusbar reference to the statusbar object
-	$object->{statusbar} = $statusbar;
-    
-    $vbox->add($statusbar);
-    
-    # add vbox instead of statusbar to object
-    $object->{ref} = $vbox;
-    
-    # add object to window objects list
-    $self->{objects}->{$object->{name}} = $object;
-
-    # position the statusbar
+    # position the notebook
     $self->add_to_container($object->{name});
 
-    # get size
-    my $req = $vbox->size_request();
-    $object->{width} = $req->width;
-    $object->{height} = $req->height;
-
-     # set sensitive state
-    $object->{ref}->set_sensitive($sensitive) if defined($sensitive);
-    
-    $vbox->show();
+    $notebook->show();
 }
 
-# ---------------------------------------------------------------------
-# set_sb_text(<name>, <text>)
-# <name> is optional. If not set the main window statusbar will use, if available
-# Return value is the message id
-# ---------------------------------------------------------------------
-sub set_sb_text($@) {
-    my $self = shift;
-    my ($name, $text) = @_;
-    
-    unless (defined($text)) {
-        $text = $name;
-        $name = 'win_sbar';
-    }
-    
-    # get statusbar object
-    my $object = $self->get_object($name);
-    
-    # show message
-    my $msg_id = $object->{statusbar}->push($object->{contextid}, $text);
-    push(@{$object->{sbar_stack}}, {$msg_id => $text});
-    unless ($object->{sbar_timeout} == 0) {
-        Glib::Timeout->add($object->{sbar_timeout},
-            sub{
-                $object->{statusbar}->remove($object->{contextid}, $msg_id);
-                delete $object->{sbar_stack}{$msg_id};
-            });
-    }
-    return $msg_id;
-}
 
 # ---------------------------------------------------------------------
-# remove_sb_text(<name>, <text>|<msg-id>)
-# <name> is optional. If not set the main window statusbar will use, if available
-# <text> is optional. If not set the last message will remove
-# ---------------------------------------------------------------------
-sub remove_sb_text($@) {
-    my $self = shift;
-    my ($name, $text_or_id) = @_;
-    
-    unless (defined($text_or_id)) {
-        $text_or_id = $name if defined($name);
-        $name = 'win_sbar';
-    }
-    
-    # get statusbar object
-    my $object = $self->get_object($name);
-    
-    if (defined($text_or_id)) {
-        my $msg_id;
-        my $msg;
-        if (looks_like_number($text_or_id)) {
-            my @new_sb_stack;
-            foreach my $i (0..$#{$object->{sbar_stack}}) {
-                foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
-                    unless ($key == $text_or_id) {
-                        push(@new_sb_stack, {$key => $object->{sbar_stack}[$i]{$key}});
-                    } else {
-                        $object->{statusbar}->remove($object->{contextid}, $text_or_id);
-                    }
-                }
-            }
-            $object->{sbar_stack} = \@new_sb_stack;
-        } else {
-            if ($text_or_id eq 'last') {
-                $object->{statusbar}->pop($object->{contextid});
-                pop(@{$object->{sbar_stack}});
-            } else {
-                my @new_sb_stack;
-                foreach my $i (0..$#{$object->{sbar_stack}}) {
-                    foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
-                        unless ($object->{sbar_stack}[$i]{$key} eq $text_or_id) {
-                            push(@new_sb_stack, {$key => $object->{sbar_stack}[$i]{$key}});
-                        } else {
-                            $object->{statusbar}->remove($object->{contextid}, $key);
-                        }
-                    }
-                }
-                $object->{sbar_stack} = \@new_sb_stack;
-            }
-        }
-    } else {
-        $object->{statusbar}->pop($object->{contextid});
-        pop(@{$object->{sbar_stack}});
-    }
-}
-
-# ---------------------------------------------------------------------
-# clear_sb_stack(<name>)
-# <name> is optional. If not set the main window statusbar will use, if available
-# ---------------------------------------------------------------------
-sub clear_sb_stack($@) {
-    my $self = shift;
-    my $name = @_;
-    
-    unless (defined($name)) {
-        $name = 'win_sbar';
-    }
-    
-    # get statusbar object
-    my $object = $self->get_object($name);
-    
-    # remove from the beginning
-    foreach my $i (0..$#{$object->{sbar_stack}}) {
-        foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
-            $object->{statusbar}->remove($object->{contextid}, $key);
-        }
-    }
-    $object->{sbar_stack} = [];
-}
-
-# ---------------------------------------------------------------------
-# add_list( Name => <name>,                     <= widget name - must be unique
-#           Pos => [pos_x, pos_y], 
-#           Size => [width, height],            <= Optional
-#           Data => [Array_of_values>],
+# add_nb_page(  Name        => <name>,                  <= widget name - must be unique
+#               Title       => <title>,
+#               Font        => [family, size, weight]   <= Optional. Sets the title font. to use the defaults set values with undef
+#               Color       => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
+#               Notebook    => <notebook_name>,         <= notebook name - must be unique
+#               Pos_n       => <number>,                <= Optional. Starts with 0
+#               Tip         => <tooltip-text>)          <= Optional
+#               Sens        => <sensitive>              <= Optional. Default: 1
 #)
 # ---------------------------------------------------------------------
-
-
-######################################################################
-# Getter funtions
-######################################################################
-
-# ---------------------------------------------------------------------
-# get sensitive state
-# is_sensitive(<name>)
-# ---------------------------------------------------------------------
-sub is_sensitive($@) {
+sub add_nb_page($@) {
     my $self = shift;
-    my $name = @_;
-    
-    # get widget
-    my $widget = $self->get_widget($name);
-    
-    return $widget->is_sensitive();
-}
-
-
-# ---------------------------------------------------------------------
-# get the title of a widget
-# TODO: Perhaps it has to changed to widget specific get functions
-# get_title(<name>)
-# ---------------------------------------------------------------------
-sub get_title($$) {
-    my $self = shift;
-    my $name = shift;
-    
-    # get object
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-    my $title = $object->{title};
-    
-    if ($type eq 'ComboBox'){
-        my $index = $object->{ref}->get_active();
-        unless ($index == -1) {
-            $title = $object->{data}[$index]
-        }
-    }
-    elsif ($type =~ /^(Slider|ScrollBar|Image|TextView|MenuBar|Notebook$)/){
-        $self->show_error($object, "\"$type\" hasn't a title!");
-        return undef;
-    }
-    return $title;
-}
-
-
-# ---------------------------------------------------------------------
-# get tooltip text from a widget
-# get_tooltip(<name>)
-# ---------------------------------------------------------------------
-sub get_tooltip($@) {
-    my $self = shift;
-    my $name = @_;
-    
-    # get object and type
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-    
-    unless($type =~ /^(Menubar|Notebook$|Menu$|LinkButton)/) {
-        return $object->{tip};
-    } else {
-        $self->show_error($object, "\"$type\" hasn't a tooltip!");
-        return;
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# get size of a widget
-# get_size(<name>)
-# ---------------------------------------------------------------------
-sub get_size($$) {
-    my $self = shift;
-    my $name = shift;
-
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-    
-    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
-        return ($object->{width}, $object->{height})
-    } else {
-        $self->show_error($object, "For \"$type\" no size avaliable!");
-        return;
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# get position of a widget
-# get_pos(<name>)
-# ---------------------------------------------------------------------
-sub get_pos($$) {
-    my $self = shift;
-    my $name = shift;
-    
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-    
-    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
-        return ($object->{pos_x}, $object->{pos_x})
-    } else {
-        $self->show_error($object, "For \"$type\" no position avaliable!");
-        return;
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# get active state of Check- and RadioButtons. Also from GtkSpinner
-# is_active(<name>)
-# get state whether a given value/string is current active in a combobox
-# is_active(<name>, <value>)
-# ---------------------------------------------------------------------
-sub is_active($@) {
-    my $self = shift;
-    my ($name, $value) = @_;
-    
-    # get object and type
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-
-    my $rc = 0;
-    
-    # only these types has an active state
-    if ($type =~ m/^(CheckButton|RadioButton)/) {
-        $rc = $object->{ref}->get_active();
-        $rc = 0 if $rc eq ''; # get_active() provides '' on uncheck
-    }
-    elsif ($type eq 'ComboBox'){
-        my $current = $object->{ref}->get_active();
-        unless ($current == -1) {
-            # number?
-            if ($value =~ /^\d+?$/) {
-                if ($value == $object->{data}[$current]) {
-                    $rc = 1;
-                }
-            # string
-            } else {
-                if ($value eq $object->{data}[$current]) {
-                    $rc = 1;
-                }
-            }
-        }
-    }
-    else {
-        $self->show_error($object, "\"$type\" hasn't an active state!");
-   } 
-   return $rc;
-}
-
-
-# ---------------------------------------------------------------------
-# has text an underline?
-# is_underlined(<text>)
-# ---------------------------------------------------------------------
-sub is_underlined($@) {
-    my $self = shift;
-    my $text = shift;
-    
-    # remove double underlines
-    $text =~ s/__//;
-    
-    my $underlined = $text =~ /_/ ? 1 : 0;
-    return $underlined;
-#   return ($text =~ /_/ ? 1 : 0); <= the same ^^
-}
-
-# ---------------------------------------------------------------------
-# get_value(<name>, <keyname> | <keyname> => <value>)
-# ---------------------------------------------------------------------
-sub get_value($@) {
-    my $self = shift;
-    my $name = shift;
-    my @key_value = @_;
-    my $key = &_extend(lc($key_value[0]));
-    my $value = 'Error';
-    
-    # get widget object
-    my $object = $self->get_object($name);
-
-    if ($object->{type} =~ /^(Check|Radio)/) {
-        if    ($key eq 'active') {$value = $object->{ref}->is_active();}
-    }
-    
-    elsif ($object->{type} eq 'LinkButton') {
-        # get uri
-        if    ($key eq 'uri') {$value = $object->{ref}->get_uri();}
-    }
-    
-    elsif ($object->{type} eq 'Label') {
-        # line wrap
-        if    ($key eq 'wrapped') {$value = $object->{ref}->get_line_wrap();}
-        # justification of label
-        elsif ($key eq 'justify') {$value = $object->{ref}->get_justify();}
-    }
-    
-    elsif ($object->{type} eq 'entry') {
-        # alignment
-        if    ($key eq 'align') {$value = $object->{ref}->get_alignment();}
-    }
-    
-    elsif ($object->{type} eq 'SpinButton') {
-        # alignment of values
-        if    ($key eq 'align') {$value = $object->{ref}->get_alignment();}
-        # minimum value
-        elsif ($key eq 'minimum') {$value = $object->{adjustment}->lower();}
-        # maximum value
-        elsif ($key eq 'maximum') {$value = $object->{adjustment}->upper();}
-        # steps
-        elsif ($key eq 'step') {$value = $object->{adjustment}->step_increment();}
-        # start/active value
-        elsif ($key eq 'active') {$value = $object->{ref}->get_value();}
-        # digits
-        elsif ($key eq 'digits') {$value = $object->{ref}->get_digits();}
-        # climbrate
-        elsif ($key eq 'climbrate') {$value = $object->{climbrate};}
-        # snap to ticks
-        elsif ($key eq 'snap') {$value = $object->{ref}->get_snap_to_ticks();}
-    }
-    
-    elsif ($object->{type} eq 'ComboBox') {
-        # index of active value, else -1
-        if    ($key eq 'active') {$value = $object->{ref}->get_active();}
-        # columns
-        elsif ($key eq 'columns') {$value = $object->{ref}->get_wrap_width();}
-        # data array
-        elsif ($key eq 'data') {$value = $object->{data};}
-    }
-
-    elsif ($object->{type} =~ /^(Slider|Scrollbar)/) {
-        # minimum value
-        if    ($key eq 'minimum') {$value = $object->{adjustment}->lower();}
-        # maximum value
-        elsif ($key eq 'maximum') {$value = $object->{adjustment}->upper();}
-        # steps
-        elsif ($key eq 'step') {$value = $object->{adjustment}->step_increment();}
-        # start/active value
-        elsif ($key eq 'active') {$value = $object->{adjustment}->value();}
-        # digits
-        elsif ($key eq 'digits') {$value = $object->{ref}->get_digits();}
-        
-        if ($object->{type} eq 'Slider') {
-            # draw value
-            if    ($key eq 'drawvalue') {$value = $object->{ref}->get_draw_value();}
-            # digits of value
-            elsif ($key eq 'digits') {$value = $object->{ref}->get_digits();}
-            # position of the draw value
-            elsif ($key eq 'valueposition') {$value = $object->{ref}->get_value_pos();}
-        }
-    }
-    
-    elsif ($object->{type} eq 'Image') {
-        # not supported
-        $self->show_error($object, "'get_value' doesn't support \"$key\". Use 'get_image' instead.");
-        $value = undef;
-    }
-    
-    elsif ($object->{type} eq 'TextView') {
-        # get margins
-        if ($key eq 'leftmargin') {$value = $object->{textview}->get_left_margin();}
-        elsif ($key eq 'rightmargin') {$value = $object->{textview}->get_right_margin();}
-        # get wrap mode
-        elsif ($key eq 'wrapped') {$value = $object->{textview}->get_wrap_mode();}
-        # get justification
-        elsif ($key eq 'justify') {$value = $object->{textview}->get_justification();}
-        # not supported
-        elsif ($key =~ /^(path|textbuffer)/) {
-            $self->show_error($object, "'get_value' doesn't support \"$key\". Use 'get_textview' instead.");
-            $value = undef;
-        }
-    }
-    
-    elsif ($object->{type} eq 'Menu') {
-        # get justification
-        if ($key eq 'justify') {$value = $object->{title_item}->get_right_justified() == 1 ? 'right' : 'left';}
-    }
-    
-    elsif ($object->{type} eq 'MenuItem') {
-        # get icon path
-        if ($key =~ /icon/) {
-            my $icon = $object->{icon};
-            my $match = 0;
-
-            if (defined($icon)) {
-                # general
-                if ($key eq 'icon') {$match = 1;}
-                # stock icon?
-                elsif ($icon =~ /^gtk-/ and $key eq 'stockicon') {$match = 1;}
-                # path ?
-                elsif (-e $icon and $key eq 'iconpath') {$match = 1;}
-                # name
-                elsif ($key eq 'iconname') {$match = 1;}
-            }
-            
-            unless ($match) {$icon = undef;}
-            
-            return $icon;
-        }
-    }
-    
-    elsif ($object->{type} eq 'Notebook') {
-        # get current page
-        if ($key eq 'currentpage') {$value = $object->{ref}->get_current_page();}
-        # get count of pages
-        elsif ($key eq 'pages') {$value = $object->{ref}->get_n_pages();}
-        # popup active?
-        elsif ($key eq 'popup') {$value = $object->{popup};}
-        # get page number with page name
-        elsif ($key eq 'name2number') {
-            # get count of pages
-            my $pages = $object->{ref}->get_n_pages();
-            my $i = 0;
-            while ($i < $pages) {
-                # get page widget
-                my $page = $object->{ref}->get_nth_page($i);
-                my $page_object = $self->get_object($page);
-                if ($page_object->{name} eq $key_value[1]) {
-                    $value = $i;
-                    last;
-                }
-                $i += 1;
-            }
-        }
-        # get page name with number
-        elsif ($key eq 'number2name') {
-            # get page widget
-            my $page = $object->{ref}->get_nth_page($key_value[1]);
-            my $page_object = $self->get_object($page);
-            $value = $page_object->{name};
-        }
-        # get page number with page title
-        elsif ($key eq 'title2number') {
-            # get count of pages
-            my $pages = $object->{ref}->get_n_pages();
-            my $i = 0;
-            while ($i < $pages) {
-                # get page widget
-                my $page = $object->{ref}->get_nth_page($i);
-                my $page_object = $self->get_object($page);
-                if ($page_object->{title} eq $key_value[1]) {
-                    $value = $i;
-                    last;
-                }
-                $i += 1;
-            }
-        }
-        elsif ($key eq 'number2title') {
-            # get page widget
-            my $page = $object->{ref}->get_nth_page($key_value[1]);
-            my $page_object = $self->get_object($page);
-            $value = $page_object->{title};
-        }
-        # is scrollbar active?
-        elsif ($key eq 'scrollable') {$value = $object->{ref}->get_scrollable();}
-        # tabs shown or position
-        elsif ($key eq 'tabs') {
-            if ($object->{ref}->get_show_tabs()) {
-                $value = $object->{ref}->get_tab_pos();
-            } else {
-                $value = 'none';
-            }
-        }
-        elsif ($key =~ /^(pagenumber|notebook)/) {
-            $self->show_error($object, "Parameter \"$key\" used with type 'NotebookPage' only.");
-            $value = undef;
-        }
-    }
-    
-    elsif ($object->{type} eq 'NotebookPage') {
-        # get number with page name
-        if ($key eq 'pagenumber') {$value = $object->{notebook}->page_num($object->{ref});}
-        # get allocated notebook name
-        elsif ($key eq 'notebook') {
-            my $nb_object = $self->get_object($object->{notebook});
-            $value = $nb_object->{name};
-        }
-        elsif ($key =~ /^(scrollable|currentpage|pagination|no2name|tabs|popup)/) {
-            $self->show_error($object, "Parameter \"$key\" used with type 'Notebook' only.");
-            $value = undef;
-        }
-    }
-
-    elsif ($object->{type} =~ /^(FontButton|FontSelectionDialog)/) {
-        # first get complete font as string from object
-        my $font = $object->{font};
-        # get preview string
-        if ($key eq 'previewstring' and $object->{type} eq 'FontSelectionDialog') {
-            $value = $object->{preview};
-        }
-        # get font string
-        elsif ($key eq 'fontstring') {
-            $value = $font;
-        } else {
-            my @fontarray = [undef, undef, undef];
-            my $fontdescription = Pango::FontDescription->from_string($font);
-            my $family = $fontdescription->get_family();
-            # get font family
-            if ($key eq 'fontfamily') {
-                $value = $family;
-            } else {
-                $fontarray[0] = $family;
-                # remove family
-                $font =~ s/$family//;
-                $font =~ s/, //;
-                # get font size
-                my @rest = split(" ",$font);
-                my $size = pop(@rest);
-                if ($key eq 'fontsize') {
-                    $value = $size;
-                } else {
-                    $fontarray[1] = $size;
-                    # get weight
-                    if ($key eq 'fontweight') {
-                        my $value = join(" ",@rest);
-                    } else {
-                        # complete font as array
-                        $fontarray[2] = join(" ",@rest);
-                        my $value = @fontarray;
-                    }
-                }
-            }
-        }
-    }
-
-    elsif ($object->{type} eq 'Statusbar') {
-        if ($key eq 'message') {
-            my @value;
-            # get the text of the message-id
-            if (looks_like_number($key_value[1])) {
-                foreach my $i (0..$#{$object->{sbar_stack}}) {
-                    foreach my $key (keys %{$object->{sbar_stack}[$i]}) {
-                        if ($key == $key_value[1]) {
-                            $value = $object->{sbar_stack}[$i]{$key};
-                            last;
-                        }
-                    }
-                }
-            # get last message
-            } else {
-                @value = values(%{$object->{sbar_stack}[-1]});
-                $value = $value[0];
-            }
-        }
-        # get message id of the text
-        elsif ($key eq 'msgid') {
-            unless ($key_value[1] eq 'last') {
-                foreach my $href (@{$object->{sbar_stack}}) {
-                    foreach my $key (keys %{$href}) {
-                         if ($href->{$key} eq $key_value[1]) {
-                             $value = $key;
-                             last;
-                         }
-                    }
-                }
-            # get last message id
-            } else {
-                my @last = keys (%{$object->{sbar_stack}[-1]});
-                $value = $last[0];
-            }
-        }
-        # get stack reference
-        elsif ($key eq 'stackref') {
-            $value = $object->{sbar_stack};
-        }
-        elsif ($key eq 'stackcount') {
-            $value = scalar @{$object->{sbar_stack}};
-        }
-    }
-
-    unless ($value eq 'Error') {
-        return $value;
-    } else {
-        $self->show_error($object, "Unknown parameter \"$key\".");
-        return undef;
-    }
-}
-
-# ---------------------------------------------------------------------
-# get font from object
-# get_font_string(<name>)
-# ---------------------------------------------------------------------
-sub get_font_string($$) {
-    my $self = shift;
-    my $name = shift;
-
-    # get font object
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-
-    my $font;
-    my $context;
-    if ($type =~ /^(FontButton|FontSelectionDialog)/) {
-        $font = $object->{ref}->get_font_name();
-    }
-    # unfortunately it's mostly not possible to get the current font with the
-    # widget holding the text. So we do it over the hash tag 'font'
-    elsif (defined($object->{font})) {
-        $font = $object->{font};
-    }
-    else {
-        $context = $self->{ref}->get_pango_context();
-        my $fontDesc = $context->get_font_description();
-        $font = $fontDesc->to_string();
-    }
-
-    unless ($font eq "") {
-        return $font;
-    } else {
-        $self->show_error($object, "\"$type\" hasn't a font!");
-        return;
-    }
-}
-
-# ---------------------------------------------------------------------
-# get font as array - font string split into array format
-# get_font_array(<name>)
-# ---------------------------------------------------------------------
-sub get_font_array($@) {
-    my $self = shift;
-    my $name = shift;
-
-    # get font object
-    my $object = $self->get_object($name);
-
-    my $font;
-    if ($object->{type} =~ /^(FontButton|FontSelectionDialog)/) {
-        $font = $object->{ref}->get_font_name();
-    } else {
-        $font = $self->get_font_string($name);
-    }
-
-    unless ($font eq "") {
-        my @fontarray = font_string_to_array($font);
-        return @fontarray;
-    } else {
-        $self->show_error($object, "\"$object->{type}\" hasn't a font!");
-        return;
-    }
-}
-
-# ---------------------------------------------------------------------
-# font_array_to_string <= Build from a font array a font string. 
-# Font family and size is requiered.
-# Array: [family, size, weight]
-# ---------------------------------------------------------------------
-sub font_array_to_string(@) {
-    my @font_array = @_;
-    my $font_string;
-    # check if comma is needed
-    my @pango_enums = ('condensed', 'expanded', 'oblique', 'italic', 'light', 'bold', 'heavy', 'roman');
-    # hope theses enums are enough :-/
-    my @family = split(' ', $font_array[0]);
-    foreach my $enums (@pango_enums) {
-        if (lc($family[-1])=~ /^$enums$/) {
-            $font_array[0] = $font_array[0] . ',';
-            last;
-        }
-    }
-    # now concatenate all
-    if (scalar(@font_array) == 2 ) {
-        $font_string = join(" ", @font_array);
-    } else {
-        $font_string = "$font_array[0] $font_array[2] $font_array[1]";
-    }
-    return $font_string;
-}
-
-
-# ---------------------------------------------------------------------
-# font_string_to_array <= Build from a font string a font array. 
-# Font family AND size is requiered.
-# ---------------------------------------------------------------------
-sub font_string_to_array {
-    my $font_string = shift;
-    my @fontarray = [undef, undef, undef];
-
-    my $fontdescription = Pango::FontDescription->from_string($font_string);
-    my $family = $fontdescription->get_family();
-    
-    # get font family
-    $fontarray[0] = $family;
-
-    # remove family
-    $font_string =~ s/$family//;
-    $font_string =~ s/, //;
-    
-    # get font size
-    my @rest = split(" ",$font_string);
-    my $size = pop(@rest);
-    $fontarray[1] = $size;
-
-    # get weight
-    $fontarray[2] = join(" ",@rest);
-    
-    return @fontarray;
-}
-
-# ---------------------------------------------------------------------
-# get image - as pixbuff or image object
-# get_image(<name> [, <keyname>])
-# ---------------------------------------------------------------------
-sub get_image($@) {
-    my $self = shift;
-    my $name = shift;
-    my $key = _extend(lc(shift)) || undef;
-    my $image = 'Error';
-
-    # get image object
-    my $object = $self->get_object($name);
-
-    # get image reference
-    if ($key eq 'image' or $key == undef) {$image = $object->{image};}
-    # get pixbuf
-    elsif ($key eq 'pixbuffer') {$image = $object->{pixbuf};}
-    # get path
-    elsif ($key eq 'path') {$image = $object->{path};}
-
-    unless ($image eq 'Error') {
-        return $image;
-    } else {
-        $self->show_error($object, "Unknown parameter \"$key\".");
-        return undef;
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# get textview object
-# get_textview(<name> [, <keyname>])
-# ---------------------------------------------------------------------
-sub get_textview($@) {
-    my $self = shift;
-    my $name = shift;
-    my $key = _extend(lc(shift)) || undef;
-    my $textview = 'Error';
-
-    # get textview object
-    my $object = $self->get_object($name);
-
-    # get textview reference
-    if ($key eq 'textview' or $key == undef) {$textview = $object->{textview};}
-    # get text buffer
-    elsif ($key eq 'textbuffer') {$textview = $object->{textbuf};}
-    # get path
-    elsif ($key eq 'path') {$textview = $object->{path};}
-    # not supported
-    elsif ($key =~ /margin$|wrapped|justify/) {
-        $self->show_error($object, "'get_textview' returns textbuffer/textview reference only. Use 'get_value' for \"$key\" instead.");
-        $textview = undef;
-    }
-
-    unless ($textview eq 'Error') {
-        return $textview;
-    } else {
-        $self->show_error($object, "Unknown parameter \"$key\".");
-        return undef;
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# get group or group name from radio button/menu
-# get_group(<name>, ["Name"])
-# ---------------------------------------------------------------------
-sub get_group($@) {
-    my $self = shift;
-    my ($name, $type) = @_;
-    
-    my $object = $self->get_object($name);
-    
-    if ($object->{type} =~ /^Radio/) {
-        unless (defined($type)) {
-            # get radio button/menu group object
-            return $object->{ref}->get_group();
-        } else {
-            # get radio button/menu group name
-            return $object->{group};
-        }
-    } else {
-        $self->show_error($object, "Can't get group - wrong type \"$object->{type}\"!");
-    }
-}
-
-
-
-######################################################################
-# Setter functions
-######################################################################
-
-# ---------------------------------------------------------------------
-# set sensitivity of a widget or a radio button group
-# set_sensitive(<name/group>, <state>)
-# ---------------------------------------------------------------------
-sub set_sensitive($@) {
-    my $self = shift;
-    my ($name, $state) = @_;
-    my $widget;
-    
-    # check if it is a widget or a group
-    if (exists $self->{objects}->{$name}) {
-        # get widget object
-        my $object = $self->get_object($name);
-        
-        if ($object->{type} eq 'Menu') {
-            $object->{title_item}->set_sensitive($state);
-        }
-        elsif ($object->{type} eq 'NotebookPage') {
-            # set the viewport instead of the scrolled window sensitive
-            # to let the scrollbars active
-            $object->{viewport}->set_sensitive($state);
-            # set sentivity of the label, too
-            $object->{pagelabel}->set_sensitive($state);
-        } else {
-            $object->{ref}->set_sensitive($state);
-        }
-    } else {
-        if (exists $self->{groups}->{$name}) {
-            $widget = $self->get_widget($self->{groups}->{$name}[0]);
-            my $group = $widget->get_group();
-            foreach (@$group) {
-                $_->set_sensitive($state);
-            }
-        } else {
-            $self->show_error("$name not found - neither in objects nor in groups list!");
-        }
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# set title of a widget
-# set_title(<name>, <new_title>)
-# ---------------------------------------------------------------------
-sub set_title($@) {
-    my $self = shift;
-    my ($name, $new_title) = @_;
-    
-    # get widget object
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-    
-    # change title in widget
-    if ($type =~ m/(^|k|o)Button$|^Frame|^Label/) {
-        $object->{ref}->set_label($new_title);
-    }
-    elsif ($type =~ m/^Entry/) {
-        $object->{ref}->set_text($new_title);
-    }
-    elsif ($type =~ m/^ComboBox/) {
-        my @array = $object->{data};
-        my $index = grep {$array[$_] =~ /^$new_title/} 0..$#array;
-        unless ($index > 0) {
-            $object->{ref}->set_active($index);
-        } else {
-            $self->show_error($object, "Can't set title \"$new_title\" - not found!");
-            return;
-        }
-    }
-    elsif ($type =~ m/^Menu|^Font/){
-        $object->{ref}->set_title($new_title);
-    }
-    elsif ($type eq 'NotebookPage'){
-        $object->{pagelabel}->set_label($new_title);
-        # update menu if active
-        my $nb_object = $self->get_object($object->{notebook});
-        # workaround - not fine but works ;-)
-        if ($nb_object->{popup}) {
-            $nb_object->{ref}->popup_disable();
-            $nb_object->{ref}->popup_enable();
-        }
-    }
-    else {
-        $self->show_error($object, "Can't set title \"$new_title\" - wrong type \"$type\"!");
-        return;
-    }
-    
-    # update title in object
-    $object->{title} = $new_title;
-}
-
-
-# ---------------------------------------------------------------------
-# set tooltip of a widget. If no tooltip exist function will add it
-# set_tooltip(<name>, <tooltip_text>)
-# ---------------------------------------------------------------------
-sub set_tooltip($@) {
-    my $self = shift;
-    my ($name, $text) = @_;
-    
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-
-
-    unless($type =~ /^(Menubar|Notebook$|TextView|Menu$)/) {
-        # Check if tooltip is set
-        if (defined($object->{tip})) {
-            $object->{tip} = $text;
-            $object->{ref}->set_tooltip_text(_($object->{tip}));
-        } else {
-            $object->{tip} = $text;
-            $self->add_tooltip($object->{name});
-        }
-    } else {
-        $self->show_error($object, "\"$type\" hasn't a tooltip!");
-        return;
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# set size of a widget
-# set_size(<name>, <new_width>, <new_height>)
-# ---------------------------------------------------------------------
-sub set_size($@) {
-    my $self = shift;
-    my ($name, $width, $height) = @_;
-    
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-    
-    unless ($type =~ m/^(Check|Radio|Label|Image|MenuItem|Menu$|NotebookPage)/) {
-        $object->{ref}->set_size_request($width, $height);
-    }
-    elsif ($type =~ m/^Image/) {
-        # scale pixbuf and create a new image
-        my $scaled = $object->{pixbuf}->scale_simple($width, $height, 'bilinear');
-        my $new_image = Gtk2::Image->new_from_pixbuf($scaled);
-        
-        # get old image and remove it from eventbox
-        my $old_image = $object->{image};
-        $object->{ref}->remove($old_image);
-        
-        # add new image to eventbox
-        $object->{ref}->add($new_image);
-        
-        # and resize the eventbox to fit the bigger/smaller image 
-        $object->{ref}->set_size_request($width, $height);
-        
-        # exchange the old with the new image reference
-        $object->{image} = $new_image;
-        
-        # and show it
-        $new_image->show();
-    }
-    else {
-        $self->show_error($object, "\"$type\" isn't resizable!");
-        return;
-    }
-
-    # update object
-    $object->{width} = $width;
-    $object->{height} = $height;
-}
-
-
-# ---------------------------------------------------------------------
-# set position of a widget
-# set_pos(<name>, <new_x>, <new_y>)
-# ---------------------------------------------------------------------
-sub set_pos($@) {
-    my $self = shift;
-    my ($name, $pos_x, $pos_y) = @_;
-
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-    
-    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
-        if (defined($object->{container})) {
-            my $container = $self->get_container($object->{container});
-            my $frame = $self->get_object($object->{container});
-                
-            # calculate position
-            my ($x, $y) = $self->_get_pos_in_frame($object->{container}, $pos_x, $pos_y);
-            
-            $container->move($object->{ref}, $x, $y);
-        } else {
-            $self->{container}->move($object->{ref}, $pos_x, $pos_y);
-        }
-    
-        # update object
-        $object->{$pos_x} = $pos_x;
-        $object->{$pos_y} = $pos_y;
-    } else {
-        $self->show_error($object, "\"$type\" cannot change the position!");
-        return;
-    }
-
-}
-
-
-# ---------------------------------------------------------------------
-# set_value(<name>, Value/MaxValue/MinValue => <new_value>)
-# ---------------------------------------------------------------------
-sub set_value($@) {
-    my $self = shift;
-    my $name = shift;
-    my %params = @_;
-
-    unless (scalar(keys %params) > 1) {
-        $self->set_values($name, %params);
-    } else {
-        $self->show_error("Too much parameters! Use 'set_values' instead.");
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# set_values(<name>, Value_x => <new_value>, Value_y => <new_value>, ...)
-# ---------------------------------------------------------------------
-sub set_values($@) {
-    my $self = shift;
-    my $name = shift;
     my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'NotebookPage';
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # notebook page specific fields
+    $object->{notebook} = $params{'notebook'};
+    my $pos_n = defined($params{'positionnumber'}) ? $params{'positionnumber'} : undef;
+    my $font = $params{'font'} || undef;
+    my $color = $params{'color'}[0] || undef;
+    my $cstate = $params{'color'}[1] || undef;
+
+    # Create a fixed container
+    my $fixed = new Gtk2::Fixed();
     
-    my $object = $self->get_object($name);
-
-    if ($object->{type} =~ /^(CheckButton|RadioButton)/) {
-        if (defined($params{'active'})) {
-            $object->{ref}->set_active($params{'active'});
-            delete $params{'active'};
-        }
-    }
-
-    if ($object->{type} eq 'LinkButton') {
-        if (defined($params{'uri'})) {
-            $object->{ref}->set_uri($params{'uri'});
-            delete $params{'uri'};
-        }
-    }
+    # add it to the containers hash
+    $self->{containers}->{$object->{name}} = $fixed;
     
-    if ($object->{type} eq 'Label') {
-        if (defined($params{'wrapped'})) {
-            $object->{ref}->set_line_wrap($params{'wrapped'});
-            delete $params{'wrapped'};
-        }
-        if (defined($params{'justify'})) {
-            $object->{ref}->set_justify($params{'justify'});
-            delete $params{'justify'};
-        }
-    }
+    # create a viewport for the fixed container
+    my $viewport = Gtk2::Viewport->new(undef, undef);
+    # change its shadow to 'none' because default is 'in' which looks odd
+    $viewport->set_shadow_type('none');
+    # for later manipulation add the viewport to the page object
+    $object->{viewport} = $viewport;
+
+    # create a scrolled window to display scrollbars
+    # if the widgets needs more place as the notebook provides
+    my $scrolled_window = Gtk2::ScrolledWindow->new(undef, undef);
+    $scrolled_window->set_policy ('automatic', 'automatic');
     
-    if ($object->{type} =~ /^(Entry|SpinButton)/ and defined($params{'align'})) {
-        # set alignment of values
-        ($params{'align'} eq 'right') ? $object->{ref}->set_alignment(1) : $object->{ref}->set_alignment(0);
-        delete $params{'align'};
-    }
+    # add fixed container to the viewport
+    $viewport->add($fixed);
+    # add the viewport to the scrolled window
+    $scrolled_window->add($viewport);
+
+    # add scrolled window as page reference to widget object
+    $object->{ref} = $scrolled_window;
     
-    if ($object->{type} =~ /^(Slider|Scrollbar|SpinButton)/) {
-        my $reconfigure = 0;
-        my $digits;
-        my $climbrate;
-        
-        if ($object->{type} eq 'SpinButton') {
-            $digits = $object->{ref}->get_digits();
-            $climbrate = $object->{climbrate};
-        }
-        
-        # set minimum value
-        if (defined($params{'minimum'})) {
-            $object->{adjustment}->lower($params{'minimum'});
-            $reconfigure = 1;
-            delete $params{'minimum'};
-        }
-        # set maximum value
-        if (defined($params{'maximum'})) {
-            $object->{adjustment}->upper($params{'maximum'});
-            $reconfigure = 1;
-            delete $params{'maximum'};
-        }
-        # set steps
-        if (defined($params{'step'})) {
-            $object->{adjustment}->step_increment($params{'step'});
-            $reconfigure = 1;
-            delete $params{'step'};
-        }
-        # set pages
-        if (defined($params{'page'})) {
-            $object->{adjustment}->page_increment($params{'page'});
-            $reconfigure = 1;
-            delete $params{'page'};
-        }
-        # set start value
-        if (defined($params{'start'})) {
-            $object->{adjustment}->value($params{'start'});
-            $reconfigure = 1;
-            delete $params{'start'};
-        }
-        # set active value
-        if (defined($params{'active'})) {
-            $object->{ref}->set_value($params{'active'});
-            delete $params{'active'};
-        }
-        
-        if ($object->{type} eq 'SpinButton') {
-            # set snap to ticks
-            if (defined($params{'snap'})) {
-                $object->{ref}->set_snap_to_ticks($params{'snap'});
-                delete $params{'snap'};
-            }
-#            # set digits
-#            if (defined($params{'digits'}) and $reconfigure) {
-#                $digits = $params{'digits'};
-#            } else {
-#            	print "params{'digits'}: '$params{'digits'}'";
-#            	print "reconfigure: '$reconfigure'";
-#                $object->{ref}->set_digits($params{'digits'}) unless $reconfigure;
-#            }
-#            delete $params{'digits'} if defined($params{'digits'});
+    # show all three
+    $scrolled_window->show();
+    $viewport->show();
+    $fixed->show();
 
-#            # set climbrate
-#            if (defined($params{'climbrate'}) and $reconfigure) {
-#                $climbrate = $params{'climbrate'};
-#            } else {
-#                $reconfigure = 1 unless defined($params{'climbrate'});
-#            }
-#            delete $params{'climbrate'} if defined($params{'climbrate'});
+    # create label for notebook tab because the default label
+    # in the page isn't available at creation date and thus
+    # tooltip can't bind to that
+    my $label = Gtk2::Label->new(_($object->{title}));
 
-            # set digits
-            if (defined($params{'digits'})) {
-            	if ($reconfigure) {
-                	$digits = $params{'digits'};
-            	} else {
-#	            	print "params{'digits'}: '$params{'digits'}'";
-#	            	print "reconfigure: '$reconfigure'";
-	                $object->{ref}->set_digits($params{'digits'});
-            	}
-	            delete $params{'digits'};
-            }
-            # set climbrate
-            if (defined($params{'climbrate'})) {
-            	if ($reconfigure) {
-	                $climbrate = $params{'climbrate'};
-            	} else {
-	                $reconfigure = 1;
-            	}
-	            delete $params{'climbrate'};
-            }
+    # add label widget of the page to object if avaliable
+    $object->{pagelabel} = $label;
 
-            # reconfigure SpinButton if needed
-            if ($reconfigure) {
-                $object->{ref}->configure($object->{adjustment}, $climbrate, $digits);
-            }
-        }
-        elsif ($object->{type} =~ /^(Slider|Scrollbar)/) {
-            if ($object->{type} eq 'Slider') {
-                # value drawing?
-                if (defined($params{'drawvalue'})) {
-                    $object->{ref}->set_draw_value($params{'drawvalue'});
-                    delete $params{'drawvalue'};
-                }
-                # digits of value
-                if (defined($params{'digits'})) {
-                    $object->{ref}->set_digits($params{'digits'});
-                    delete $params{'digits'};
-                }
-                # position of the value
-                if (defined($params{'valueposition'})) {
-                    $object->{ref}->set_value_pos($params{'valueposition'});
-                    delete $params{'valueposition'};
-                }
-            }
-            
-            if ($reconfigure) {
-                Glib::Object->signal_emit($object->{adjustment}, "changed");
-            }
-        }
-    }
+    # add page to notebook
+    my $notebook = $self->get_widget($object->{notebook});
     
-    if ($object->{type} eq 'ComboBox'){
-        # index of active value
-        if (defined($params{'active'})) {
-            $object->{ref}->set_active($params{'active'});
-            delete $params{'active'};
-        }
-        if (defined($params{'columns'})) {
-            $object->{ref}->set_wrap_width($params{'columns'});
-            delete $params{'columns'};
-        }
-        if (defined($params{'data'})) {
-            # exchange old data in object with new one
-            $object->{data} = $params{'data'};
-            delete $params{'data'};
-            
-            # remove all rows in liststore object
-            my $model = $object->{ref}->get_model();
-            $model->clear();
-            
-            # add new data to ListStore object
-            foreach(@{$object->{data}}) {
-                my $iter = $model->append;
-                $model->set($iter,0 => _($_));
-            }
-            
-            # check if there's a $params{'start'}
-            my $start = defined($params{'start'}) ? $params{'start'} : 0;
-            delete $params{'start'} if defined($params{'start'});
-            
-            # set active item
-            $object->{ref}->set_active($start);
-        }
-    }
-    
-    if ($object->{type} eq 'TextView'){
-        # set margins
-        if (defined($params{'leftmargin'})) {
-            $object->{textview}->set_left_margin($params{'leftmargin'});
-            delete $params{'leftmargin'};
-        }
-        if (defined($params{'rightmargin'})) {
-            $object->{textview}->set_right_margin($params{'rightmargin'});
-            delete $params{'rightmargin'};
-        }
-        # set wrap mode
-        if (defined($params{'wrapped'})) {
-            $object->{textview}->set_wrap_mode($params{'wrapped'});
-            delete $params{'wrapped'};
-        }
-        # set justification
-        if (defined($params{'justify'})) {
-            $object->{textview}->set_justification($params{'justify'});
-            delete $params{'justify'};
-        }
-    }
-    
-    if ($object->{type} eq 'Menu') {
-        # set justification
-        if (defined($params{'justify'})) {
-            my $justify = $params{'justify'} eq 'right' ? 1 : 0;
-            $object->{title_item}->set_right_justified($justify);
-            delete $params{'justify'};
-        }
-
-    }
-
-    if ($object->{type} eq 'MenuItem') {
-        # set icon
-        if (defined($params{'icon'})) {
-            my $icon = $object->{icon};
-            # first check which icon is suggested
-            my $image;
-            if (defined($icon)) {
-                # stock icon?
-                if ($icon =~ /^gtk-/) {
-                    $image = Gtk2::Image->new_from_stock($icon, 'menu')
-                } else {
-                    # path or theme icon name?
-                    if (-e $icon) {
-                        $image = Gtk2::Image->new_from_file($icon);
-                    } else {
-                        $image = Gtk2::Image->new_from_icon_name($icon, 'menu');
-                    }
-                    $object->{ref}->set_image($image);
-                }
-            } else {
-                $self->show_error($object, "\"$object->{type}\" hasn't an icon!");
-            }
-            delete $params{'icon'};
-        }
-    }
-
-    if ($object->{type} eq 'Notebook'){
-        # set current page
-        if (defined($params{'currentpage'})) {
-            if ($params{'currentpage'} eq 'next') {
-                $object->{ref}->next_page();
-            } 
-            elsif($params{'currentpage'} =~ /^prev/) {
-                $object->{ref}->prev_page();
-            }
-            else {
-                $object->{ref}->set_current_page($params{'currentpage'});
-            }
-            delete $params{'currentpage'};
-        }
-        # set popup
-        if (defined($params{'popup'})) {
-            if ($params{'popup'}) {
-                $object->{ref}->popup_enable();
-            } else {
-                $object->{ref}->popup_disable();
-            }
-            # update object
-            $object->{popup} = $params{'popup'};
-            delete $params{'popup'};
-        }
-        # set scrollable
-        if (defined($params{'scrollable'})) {
-            $object->{ref}->set_scrollable($params{'scrollable'});
-            delete $params{'scrollable'};
-        }
-        # show tabs
-        if (defined($params{'showtabs'})) {
-            $object->{ref}->set_show_tabs($params{'showtabs'});
-            delete $params{'showtabs'};
-        }
-        # tabs ()show/hide and position)
-        if (defined($params{'tabs'})) {
-            unless ($params{'tabs'} eq 'none') {
-                $object->{ref}->set_show_tabs(1);
-                $object->{ref}->set_tab_pos($params{'tabs'});
-            } else {
-                $object->{ref}->set_show_tabs(0);
-            }
-            delete $params{'tabs'};
-        }
-    }
-    
-    if ($object->{type} eq 'NotebookPage'){
-        # reorder the page to position x
-        if (defined($params{'reorder'})) {
-            $object->{notebook}->reorder_child($object->{ref}, $params{'reorder'});
-            delete $params{'reorder'};
-        }
-    }
-
-    if ($object->{type} =~ /^(FontButton|FontSelectionDialog)/) {
-        # set preview text
-        if (defined($params{'preview'}) and $object->{type} eq 'FontSelectionDialog') {
-            $object->{ref}->set_preview_text($params{'preview'});
-            $object->{preview} = $params{'preview'};
-        }
-        # set full fontname
-        if (defined($params{'font'})) {
-            if (ref($params{'font'}) eq 'ARRAY') {
-                $object->{font} = scalar(@{$params{'font'}}) == 2 ? join(" ", @{$params{'font'}}) : "$params{'font'}[0] $params{'font'}[2] $params{'font'}[1]";
-            } else {
-                $object->{font} = $params{'font'};
-            }
-            if ($object->{type} eq 'FontButton'){
-                $object->{ref}->set_font_name ($object->{font});
-            }
-        }
-        my @fontarray = $self->get_font_array($object->{font});
-        # set only font family
-        if (defined($params{'fontfamily'})) {
-            $fontarray[0] = $params{'fontfamily'};
-        }
-        # set only font size
-        if (defined($params{'fontsize'})) {
-            $fontarray[1] = $params{'fontsize'};
-        }
-        # set only font weight
-        if (defined($params{'fontweight'})) {
-            $fontarray[2] = $params{'fontweight'};
-        }
-        # update object and reference
-        $object->{font} = "$fontarray[0] $fontarray[2] $fontarray[1]";
-        if ($object->{type} eq 'FontButton'){
-            $object->{ref}->set_font_name ($object->{font});
-        }
-    }
-
-    # if there remain(s) unknown parameter(s) 
-    if (scalar keys %params > 0) {
-        my $rest = join(", ", keys %params);
-        $self->show_error($object, "Unknown parameter(s) \"$rest\".");
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# set_image(Name    => <name>,                      <= widget name - must be unique
-#           Path    => <file_path>,
-#           Pixbuf  => <pix_buffer_object>
-#           Image   => <image_object>
-#           Stock   => [<stock_name>,<stock_size>]  <= stock_size is per default 'dialog' because for scaling.
-#                                                           So, if stock_size is given, Size is optional
-#)
-# ---------------------------------------------------------------------
-sub set_image($@) {
-    my $self = shift;
-    my $name = shift;
-    my %params = $self->_normalize(@_);
-    
-    my $object = $self->get_object($name);
-    
-    my $image;
-    if (defined($params{'path'}) or defined($params{'pixbuffer'})) {
-        # path want be changed
-        if (defined($params{'path'})) {
-            $object->{path} = $params{'path'};
-            $object->{pixbuf} = Gtk2::Gdk::Pixbuf->new_from_file("$object->{path}");
-        }
-        # pixbuf want be changed
-        elsif (defined($params{'pixbuffer'})) {
-            $object->{pixbuf} = $params{'pixbuffer'};
-        }
-        
-        # scale image
-        my $scaled = $object->{pixbuf}->scale_simple($object->{width},$object->{height},'bilinear');
-        $image = Gtk2::Image->new_from_pixbuf($scaled);
-    }
-    elsif (defined($params{'image'})) {
-        $image = $params{'image'};
-    }
-    elsif (defined($params{'stock'})) {
-        $object->{stock} = $params{'stock'}[0] || undef;
-        my $stock_size =  $params{'stock'}[1] || 'dialog';
-
-        my $temp_image = Gtk2::Image->new_from_stock($object->{stock}, $stock_size);
-        $object->{pixbuf} = $temp_image->render_icon($object->{stock}, $stock_size);
-        # if no size is defined take the size from stock icon
-        my $scale_no = 2;
-        my $req = $temp_image->size_request();
-        unless (defined($object->{width})) {
-            $object->{width} = $req->width;
-            $scale_no -= 1;
-        }
-        unless (defined($object->{height})) {
-            $object->{height} = $req->height;
-            $scale_no -= 1;
-        }
-        # scale stock icon
-        my $scaled;
-        if ($scale_no != 0) {
-            $scaled = $object->{pixbuf}->scale_simple($object->{width},$object->{height},'bilinear');
-        } else {
-            $scaled = $object->{pixbuf};
-        }
-        $image = Gtk2::Image->new_from_pixbuf($scaled);
-    }
-    else {
-        my $rest = join(", ", keys %params);
-        $self->show_error($object, "Unknown parameter(s): \"$rest\".");
-        return undef;
-    }
-    
-    # remove old one from eventbox
-    $object->{ref}->remove($object->{image});
-    
-    # put the new image reference to the image object
-    $object->{image} = $image;
-
-    # add image to eventbox
-    $object->{ref}->add($image);
-    
-    # show new image
-    $object->{ref}->show();
-}
-
-# ---------------------------------------------------------------------
-# set_textview( Name => <name>,                     <= widget name - must be unique
-#               Path => <file_path>,
-#               Textbuf => <text_buffer_object>
-#               Text => <string>
-#)
-# ---------------------------------------------------------------------
-sub set_textview($@) {
-    my $self = shift;
-    my $name = shift;
-    my %params = $self->_normalize(@_);
-    
-    my $object = $self->get_object($name);
-    
-    # add a new content from path
-    my $buffer;
-    if (defined($params{'path'})) {
-        # add new path
-        $object->{path} = $params{'path'};
-        # add new content from path to text buffer
-        $buffer = $object->{textview}->get_buffer();
-        my $content = `cat $object->{path}` || '';
-        $buffer->set_text($content);
-        $object->{textbuf} = $buffer;
-    }
-    # add a given string
-    elsif (defined($params{'text'})) {
-        # add new content from text to text buffer
-        $buffer = $object->{textview}->get_buffer();
-        my $content = $params{'text'};;
-        $buffer->set_text($content);
-        $object->{textbuf} = $buffer;
-    }
-    # add a given text buffer
-    elsif (defined($params{'textbuffer'})) {
-        $object->{textbuf} = $params{'textbuffer'};
-    }
-    # unsupported
-    else {
-        my $rest = join(", ", keys %params);
-        $self->show_error($object, "Unknown parameter(s): \"$rest\".");
-        return undef;
-    }
-    
-    # add  to textview buffer
-    $object->{textview}->set_buffer($object->{textbuf});
-    
-    # show it
-    $object->{textview}->show();
-}
-
-
-# ---------------------------------------------------------------------
-# set_group(<name>, <group/group_name>)
-# Sets a new group on the radio button _<name>_. 
-# It can be used an existing group object or group name.
-# ---------------------------------------------------------------------
-# TODO: how to set group? a single widget, all of an old group or what?
-sub set_group($@) {
-    my $self = shift;
-    my $hme = @_;
-    print "set_group not implemented yet.\n";
-}
-
-
-# ---------------------------------------------------------------------
-# set_font(<name>, <font_string> | [family, size, weight] | Family => family, Size => size, Weight => weight)
-# ---------------------------------------------------------------------
-sub set_font($@) {
-    my $self = shift;
-    my $name = shift;
-    my %params;
-    my ($new_family, $new_size, $new_weight) = undef;
-    my $new_font_string = undef;
-    if (@_ == 1) {
-        my $reference = shift;
-        # is it a font array?
-        if (ref($reference) eq 'ARRAY') {
-            $new_family = $$reference[0];
-            $new_size = $$reference[1] if ($reference > 1);
-            $new_weight = $$reference[2] if ($reference > 2);
-        } else {
-            # is it a string?
-            $new_font_string = $reference;
-        }
+    if (defined($pos_n)) {
+        $notebook->insert_page($object->{ref}, undef, $pos_n);
     } else {
-        %params = $self->_normalize(@_);
-        $new_family = $params{'family'} || undef;
-        $new_size = $params{'size'} || undef;
-        $new_weight = $params{'weight'} || undef;
+        $notebook->append_page($object->{ref});
     }
 
-    # get widget object
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
+    # set tab and menu label
+    $notebook->set_tab_label($object->{ref}, $object->{pagelabel});
 
-    # check if object has a text to change allready
-    if ($type =~ m/(^|k|o)Button$|^Frame|^Label|^Entry|^Text|^NotebookPage/) {
-        unless (defined($new_font_string)){
-            my $context;
-            if ($type =~ m/^Text/) {
-                $context = $object->{textview}->get_pango_context();
-            } else {
-                $context = $object->{ref}->get_pango_context();
-            }
-            my $fontDesc = $context->get_font_description();
-            my @new_font_array;
-            unless (defined($new_family)) {
-                $new_family = $fontDesc->get_family();
-            }
-            push(@new_font_array, $new_family);
-            unless (defined($new_size)) {
-                if ($type =~ m/^Text/) {
-                    $new_size = &get_fontsize($object->{textview});
-                } else {
-                    $new_size = &get_fontsize($object->{ref});
-                }
-            }
-            push(@new_font_array, $new_size);
-            if (defined($new_weight)) {
-                push(@new_font_array, $new_weight);
-            }
-            $new_font_string = &font_array_to_string(@new_font_array);
-        }
-        my $font_desc = Gtk2::Pango::FontDescription->from_string($new_font_string);
-        
-        # get the needed label
-        my $label = $object->{ref};
-        if ($type =~ m/^Frame/) {
-            $label = $object->{ref}->get_label_widget();
-        }
-        elsif ($type =~ m/(^|k|o)Button$/) {
-            $label = $object->{ref}->get_child();
-        }
-        elsif ($type =~ m/^Text/) {
-           $label = $object->{textview};
-        }
-        elsif ($type eq 'NotebookPage'){
-            $label = $object->{pagelabel};
-        }
-        $label->modify_font($font_desc);
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
 
-        # update or add new font to object
-        $object->{font} = $new_font_string;
-        #print "new_font_string: $new_font_string\n";
-    } else {
-        if (defined($new_font_string)) {
-            $self->show_error($object, "Can't set font \"$new_font_string\" - wrong type \"$type\"!");
-        } else {
-            $self->show_error($object, "Can't set font - wrong type \"$type\"!");
-        }
-        return;
-    }
-}
+    # set font color if defined
+    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
 
-
-# ---------------------------------------------------------------------
-# set_font_color(<name>, <color>, <state>)
-# <state> is optional. Default is 'normal'
-# ---------------------------------------------------------------------
-sub set_font_color($@) {
-    my $self = shift;
-    my ($name, $new_color, $state) = @_;
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
     
-    $state = 'normal' unless defined($state);
-    
-    # get widget object
-    my $object = $self->get_object($name);
-    my $type = $object->{type};
-
-    my $gdk_color = Gtk2::Gdk::Color->parse($new_color);
-
-    # get text widget to modify color
-    my $label;
-    if ($object->{type} =~ m/(^|k|o)Button$/) {
-        $label = $object->{ref}->get_child();
-    }
-    elsif ($object->{type} =~ m/^Frame/) {
-        $label = $object->{ref}->get_label_widget();
-    }
-    elsif ($object->{type} =~ m/^Label/) {
-        $label = $object->{ref};
-    }
-    elsif ($type eq 'NotebookPage'){
-        $label = $object->{pagelabel};
-    }
-    else {
-        $self->show_error($object, "Can't set color \"$new_color\" - wrong type \"$type\"!");
-        return;
-    }
-    $label->modify_fg($state, $gdk_color);
 }
-
-
 
 
 # ---------------------------------------------------------------------
@@ -4835,6 +5048,419 @@ sub remove_nb_page($@) {
 }
 
 
+######################################################################
+# Ornaments
+######################################################################
+
+# ---------------------------------------------------------------------
+# add_frame (   Name    => <name>,                  <= widget name - must be unique
+#               Title   => <title>,
+#               Font    => [family, size, weight]   <= Optional. Sets a frame font. to use the defaults set values with undef
+#               Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
+#               Pos     => [pos_x, pos_y], 
+#               Size    => [width, height],
+#               Tip     => <tooltip-text>)          <= Optional
+#               Sens    => <sensitive>              <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_frame($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Frame';
+    my $font = $params{'font'} || undef;
+    my $color = $params{'color'}[0] || undef;
+    my $cstate = $params{'color'}[1] || undef;
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # create frame
+    my $frame;
+    if ($object->{title}) {
+        $frame = Gtk2::Frame->new(_($object->{title}));
+    } else {
+        $frame = Gtk2::Frame->new();        
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $frame;
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # change font if set
+    $self->set_font($object->{name}, $font) if defined($font);
+
+    # set font color if defined
+    $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
+
+    # Create the fixed container
+    my $fixed = new Gtk2::Fixed();
+    $self->{containers}->{$object->{name}} = $fixed;
+    $frame->add($fixed);
+    $fixed->show();
+    
+    # set positon of the frame
+    unless (defined($object->{container})) {
+        $self->{container}->put($frame, $object->{pos_x}, $object->{pos_y});
+    } else {
+        $self->add_to_container($object->{name});
+    }
+    
+    $frame->show();
+}
+
+
+## ---------------------------------------------------------------------
+## add_separator(Name => <name>,                 <= widget name - must be unique
+##               Pos => [pos_x, pos_y],
+##               Size => [width, height],        <= Optional
+##               Orient => <orientation>         <= orientation of the separator (horizontal, vertical)
+##               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
+##               Sens => <sensitive>             <= Optional. Default: 1
+##)
+## ---------------------------------------------------------------------
+#sub add_separator($@) {
+#    my $self = shift;
+#    my %params = $self->_normalize(@_);
+#    my $object = _new_widget(%params);
+#    $object->{type} = 'Separator';
+#    
+#    # separator specific fields
+#    $object->{orientation} = $params{'orientation'} || undef;
+#
+#    # add widget object to window objects list
+#    $self->{objects}->{$object->{name}} = $object;
+#    
+#    # create V or HBox and separator depending on the orientation
+#    my $box;
+#    my $separator;
+#    if ($object->{orientation} eq 'horizontal') {
+#        $box = Gtk2::HBox->new(1,0);
+#        $separator = Gtk2::HSeparator->new();
+#    }
+#    elsif ($object->{orientation} eq 'vertical') {
+#        $box = Gtk2::VBox->new(1,0);
+#        $separator = Gtk2::VSeparator->new();
+#    } else {
+#        $self->internal_die($object, "Wrong orientation '" . $object->{orientation} . "' defined!");
+#    }
+#    
+#    # for later manipulation we put the separator reference to the object
+#    $object->{separator} = $separator;
+#
+#    # add separator to the box
+#    $box->pack_start($separator, 1, 1, 5);
+#
+#    # add box object as the separator object to window objects hash
+#    $object->{ref} = $box;
+#    
+#    # set some common functions: size, tooltip and sensitive state
+#    $self->_set_commons($object->{name}, %params);
+#    
+#    # position the separator
+#    $self->add_to_container($object->{name});
+#
+#    $separator->show();
+#    $box->show();
+#}
+
+
+######################################################################
+# Scrolling
+######################################################################
+
+# ---------------------------------------------------------------------
+# add_scrollbar(    Name    => <name>,              <= widget name - must be unique
+#                   Pos     => [pos_x, pos_y], 
+#                   Size    => [width, height],     <= Optional
+#                   Orient  => <orientation>        <= orientation of the slider (horizontal, vertical)
+#                   Start   => <start_value>,       <= Optional. Default: 0.0
+#                   Min     => <min_value>,         <= Double
+#                   Max     => <max_value>,         <= Double
+#                   Step    => <step_in/decrease>   <= Double
+#                   Digits  => <digits>             <= Optional. Default: 0 (1 digit)
+#                   Tip     => <tooltip-text>)      <= Optional
+#                   Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
+#                   Func    => <function_click>     <= Optional. Can be set later with add_signal_handler
+#                   Sig     => <signal>             <= Optional. Only in conjunction with Func
+#                   Sens    => <sensitive>          <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_scroll_bar($@) {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Scrollbar';
+
+    $self->_create_range_widget($object, %params);
+}
+
+
+# ---------------------------------------------------------------------
+# common function for sliders and scrollbars
+# TODO: the scrollbar hasn't a draw value. Perhaps adding a label with the
+# value via signal_emit('value_changed')
+# Problem: where do we get the position of the thumb? We have the length
+# of the scrollbar but not from the arrows. We have the min, max, steps and
+# the digits. So, if we get the length of the arrow we could calculate the
+# pixels ...
+# ---------------------------------------------------------------------
+sub _create_range_widget($@) {
+    my $self = shift;
+    my ($object, %params) = @_;
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # slider specific fields
+    my $orient = $params{'orientation'} || undef;
+    my $start = $params{'start'} || 0;
+    my $min = $params{'minimum'} || 0;
+    my $max = $params{'maximum'} || 0;
+    my $step = $params{'step'} || 0;
+    my $draw_value = defined($params{'drawvalue'}) ? $params{'drawvalue'} : 1;
+    my $value_pos = $params{'valueposition'} || 'top';
+    my $digits = $params{'digits'} || 0;
+
+    # first create an adjustment widget to hold information about the range of 
+    # values that the slider can take
+    my $adjustment = Gtk2::Adjustment->new( $start,
+                                            $min,
+                                            $max,
+                                            $step,
+                                            0.0,
+                                            0.0);
+    
+    # add to object for later manipulation
+    $object->{adjustment} = $adjustment;
+    
+    # now the range widget follows
+    my $range_widget;
+    if ($object->{type} eq 'Slider'){
+        if ($orient eq 'horizontal') {
+            $range_widget = Gtk2::HScale->new($adjustment);
+        } else {
+            $range_widget = Gtk2::VScale->new($adjustment);
+        }
+    }
+    elsif ($object->{type} eq 'Scrollbar'){
+        if ($orient eq 'horizontal') {
+            $range_widget = Gtk2::HScrollbar->new($adjustment);
+        } else {
+            $range_widget = Gtk2::VScrollbar->new($adjustment);
+        }
+    }
+    
+    # add widget reference to widget object
+    $object->{ref} = $range_widget;
+    
+    # should the current slider value shown and where
+    if ($object->{type} eq 'Slider') {
+        $range_widget->set_draw_value($draw_value);
+        # set the position of the value
+        $range_widget->set_value_pos($value_pos);
+        # set the digits
+        $range_widget->set_digits($digits);
+    }
+
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    # position the slider
+    $self->add_to_container($object->{name});
+    $range_widget->show();
+}
+
+
+######################################################################
+# Miscellaneous
+######################################################################
+
+# ---------------------------------------------------------------------
+# add_drawing_area( Name    => <name>,                      <= widget name - must be unique
+#                   Pos     => [pos_x, pos_y], 
+#                   Size    => [width, height],             <= gtk2 pixmaps have a current limit of short unsigned INT, 
+#                                                              highest pixels is 32767-1 (8bit int max)
+#                   Frame   => <frame_name>                 <= Name of the frame where area is located. Must be unique
+#                   Func    => <function_click>             <= Optional. Can be set later with add_signal_handler
+#                   Sig     => <signal>                     <= Optional. Only in conjunction with Func
+#                   Sens    => <sensitive>                  <= Optional. Default: 1
+#)
+# ---------------------------------------------------------------------
+sub add_drawing_area {
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'DrawingArea';
+    
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+
+    # DrawingArea specific fields
+    $object->{pixmap} = undef; # holds the drawing as a pixmap created in the configure_event
+
+    # create a scrolled window to display scrollbars
+    my $scrolled_window = Gtk2::ScrolledWindow->new (undef, undef);
+    $scrolled_window->set_policy ('automatic', 'automatic');
+    
+    # size of the text widget (scrolled window)
+    $scrolled_window->set_size_request($object->{width}, $object->{height});
+
+    # Create the drawing area.
+    my $drawing_area = new Gtk2::DrawingArea(); #don't confuse with Gtk2::Drawable
+    #$drawing_area->set_size_request($object->{width}, $object->{height});
+
+    # for later manipulation we put the drawing_area reference to the drawing area object
+    $object->{drawing_area} = $drawing_area;
+
+    # set possible events
+    $drawing_area->set_events ([qw/exposure-mask
+                                leave-notify-mask
+                                button-press-mask
+                                button-release-mask
+                                pointer-motion-mask
+                                pointer-motion-hint-mask/]);
+    
+    # Signals used to handle backing pixmap
+    $self->add_signal_handler($object->{name}, "configure_event", \&_configure_event, $self);
+    $self->add_signal_handler($object->{name}, "expose_event", \&_expose_event, $self);
+    
+    # add drawing_area to scrolled window
+    $scrolled_window->add_with_viewport($drawing_area);
+    
+    # add scrolled window (parent) to window objects list
+    $object->{ref} = $scrolled_window;
+
+    # set some common functions: size and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the drawing area
+    $self->add_to_container($object->{name});
+
+    $scrolled_window->show();
+    #push(@{$self->{lates}}, $object->{name});
+}
+
+
+# ---------------------------------------------------------------------
+# initial_draw(<drawing_area_name>, <function>, <data>)
+# function to draw with 
+# ---------------------------------------------------------------------
+sub initial_draw($@) {
+    my $self = shift;
+    my ($name, $function, $data) = @_;
+    
+    # get object
+    my $object = $self->get_object($name);
+    
+    # is it a drawing area
+    if ($object->{type} eq 'DrawingArea') {
+        # add function to subs hash
+        $self->_add_subs($function, $data);
+    } else {
+        $self->internal_die($object, "Isn't a drawing area object type => \"$object->{type}\"!");
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# get an allocated color or add one for later use
+# ---------------------------------------------------------------------
+sub get_color($@) {
+    my $self = shift;
+    my ($colormap, $name) = @_;
+    my $ret;
+
+    if ($ret = $self->{allocated_colors}->{$name}) {
+        return $ret;
+    }
+
+    my $color = Gtk2::Gdk::Color->parse($name);
+    $colormap->alloc_color($color,1,1);
+
+    $self->{allocated_colors}{$name} = $color;
+
+    return $color;
+}
+
+
+# ---------------------------------------------------------------------
+# add tooltip to widget
+# add_tooltip(<name>)
+# ---------------------------------------------------------------------
+sub add_tooltip($@) {
+    my $self = shift;
+    my $name = shift;
+    my $object = $self->get_object($name);
+
+    # Check if tooltip should use
+    if (defined($object->{tip})) {
+        # remove all spaces/tabs if a backslash is found => wrap in script
+        # in long text for better readability
+        $object->{tip} =~ s/\R\h+//g;
+        if ($object->{type} eq 'NotebookPage') {
+            # add tooltip to label widget of the page if avaliable
+            my $notebook = $self->get_widget($object->{notebook});
+            my $page_label = $notebook->get_menu_label($object->{ref});
+            $object->{pagelabel}->set_tooltip_text(_($object->{tip}));
+        } else {
+            $object->{ref}->set_tooltip_text(_($object->{tip}));
+        }
+        
+        $self->add_signal_handler($object->{name}, "query_tooltip", \&_query_tooltip);
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# get tooltip text from a widget
+# get_tooltip(<name>)
+# ---------------------------------------------------------------------
+sub get_tooltip($@) {
+    my $self = shift;
+    my $name = @_;
+    
+    # get object and type
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+    
+    unless($type =~ /^(Menubar|Notebook$|Menu$|LinkButton)/) {
+        return $object->{tip};
+    } else {
+        $self->show_error($object, "\"$type\" hasn't a tooltip!");
+        return;
+    }
+}
+
+
+# ---------------------------------------------------------------------
+# set tooltip of a widget. If no tooltip exist function will add it
+# set_tooltip(<name>, <tooltip_text>)
+# ---------------------------------------------------------------------
+sub set_tooltip($@) {
+    my $self = shift;
+    my ($name, $text) = @_;
+    
+    my $object = $self->get_object($name);
+    my $type = $object->{type};
+
+
+    unless($type =~ /^(Menubar|Notebook$|TextView|Menu$)/) {
+        # Check if tooltip is set
+        if (defined($object->{tip})) {
+            $object->{tip} = $text;
+            $object->{ref}->set_tooltip_text(_($object->{tip}));
+        } else {
+            $object->{tip} = $text;
+            $self->add_tooltip($object->{name});
+        }
+    } else {
+        $self->show_error($object, "\"$type\" hasn't a tooltip!");
+        return;
+    }
+}
 
 1;
 __END__
