@@ -14,6 +14,146 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# ---------------------------------------------------------------------
+#   Title: SimpleGtk2
+#
+#   A Rapid Application Development Library for Gtk+ version 2.
+#
+#   About: Description
+#   SimpleGtk2 is a wrapper library to build graphical user interfaces
+#   with a minimal programming effort.
+#
+#   It is based on the GtkFixed widget which is a container you can place 
+#   child widgets at fixed positions and with fixed sizes, given in pixels.
+#
+#   About: Example
+#   The 'Hello World' example ;-)
+#
+#   Original with Perl-Gtk2:
+#
+#   (start code)
+#        #! /usr/bin/perl -w
+#        use strict;
+#        use Gtk2 -init;
+# 
+#        # toplevel window
+#        my $window = Gtk2::Window->new('toplevel');
+#        $window->signal_connect(delete_event => sub { Gtk2->main_quit });
+# 
+#        # button
+#        my $button = Gtk2::Button->new('Action');
+#        $button->signal_connect(clicked => sub{print("Hello Gtk2-Perl\n");});
+# 
+#        # add button and show window
+#        $window->add($button);
+#        $window->show_all();
+# 
+#        Gtk2->main;
+#   (end)
+#
+#   With SimpleGtk2:
+#
+#   (start code)
+#        #! /usr/bin/perl -w
+#        use strict;
+#        use SimpleGtk2;
+# 
+#        # toplevel window
+#        my $window = SimpleGtk2->new_window(Type => 'toplevel', 
+#                                            Name => 'main', 
+#                                            Title => 'Hello World');
+#        $window->add_signal_handler('main', 'delete_event', 
+#                                            sub { Gtk2->main_quit; });
+# 
+#        # button
+#        $window->add_button(Name => 'button', Pos => [20, 40], 
+#                            Title => "Action", Sig => 'clicked', 
+#                            Func => sub {print("Hello Gtk2-Perl\n");});
+#        # show window
+#        $window->show_and_run();
+#   (end)
+#
+#   About: Basics
+#   Short introduction how SimpleGtk2 is constructed.
+#
+#   SimpleGtk2 works with objects and containers. 
+#
+#   All widget objects are stored as a hash in an internal object list hash 
+#   in the respective window created with <new_window>. Basically each object 
+#   hash has the following structure:
+#
+#   (start code)
+#    object = (  type       => <string>  || undef,
+#                name       => <string>  || undef,
+#                title      => <string>  || undef,
+#                pos_x      => <integer> || undef,
+#                pos_y      => <integer> || undef,
+#                width      => <integer> || undef,
+#                height     => <integer> || undef,
+#                container  => <string>  || undef,
+#                tip        => <string>  || undef,
+#                handler    => <hash>    || {},
+#                ref        => <widget_reference> || undef
+#             )
+#   (end)
+#
+#   Some widgets have additional entries like paths or other references but
+#   all of them can be accessed and updated with the support functions and 
+#   shouldn't used directly to prevent inconsistencies.
+#
+#   Containers are the window itself, frames or notebook pages. If you are use 
+#   a GUI designer like Qt-Designer (not a joke - Glade cannot be used because it
+#   handles the positioning and sizing without dimensions but Qt-Designer does) to
+#   create your surface you can take the position values one by one in SimpleGtk2.
+#
+#   SimpleGtk2 has implemented the most needed functions for each widget. But if you 
+#   need one which isn't available you can use its Gtk reference and access it the
+#   old way.
+#
+#   About: Special Feature
+#   SimpleGtk2 has module support for <FVWM at http://www.fvwm.org> to use it in conjunction
+#   with <fvwm-perllib at http://www.fvwm.org/documentation/perllib/>. See <FVWM Support> for
+#   more information.
+#   
+#   About: Caveats
+#   The problems and their handling.
+#
+#   GtkFixed has some caveats but the most annoying ones are removed or can 
+#   be defanged with this library:
+#   - The GUI grows/shrinks automatically depending on the Font size. Default is 10. 
+#     But you can create the GUI with your loved size. Add it to your <new_window> 
+#     definition and you're fine.
+#   - The widget sizes aren't changeable by themes because they're defined 
+#     by the user in the program.
+#   - Translation of text into other languages changes its size. Also, display 
+#     of non-English text will use a different font in many cases. So keep 
+#     in mind to use positioning and sizing sufficiently, that translations fit 
+#     fine enough. 
+#
+#   The only thing which still exists is that fixed widgets can't properly be mirrored in 
+#   right-to-left languages such as Hebrew and Arabic. i.e. normally GTK+ will 
+#   flip the interface to put labels to the right of the thing they label, but 
+#   it can't do that with GtkFixed. So your application will not be usable in 
+#   right-to-left languages. 
+#
+#   About: Bugs
+#   Where to send bug reports.
+#
+#   Bug reports can be sent to fvwmnightshade-workers mailing list at 
+#   <https://groups.google.com/forum/?hl=en#!forum/fvwmnightshade-workers>
+#   or submit them under <https://github.com/Fvwm-Nightshade/Fvwm-Nightshade/issues>.
+#
+#   About: License
+#   This software stands under the GPL V2 or higher.
+#
+#   About: Author
+#   (C) 2015 Thomas Funk <t.funk@web.de>
+#
+#   About: Thanks
+#   Thanks to:
+#   * The Perl-Gtk2 team helped me to fix some problems.
+#   * The Gtk2 team where I've borrowed some text passages and the arrangement.
+# ---------------------------------------------------------------------
 package SimpleGtk2;
 
 #use 5.004;
@@ -52,8 +192,8 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $GETTEXT $LANGUAGE $LC
 @EXPORT = qw(use_gettext translate get_fontsize get_fontfamily get_fontweight 
             get_color new_window internal_die show_error show_message show 
             show_and_run add_signal_handler remove_signal_handler get_object 
-            exist_object get_widget hide_widget show_widget get_container 
-            add_to_container add_tooltip add_button add_link_button 
+            exist_object get_widget hide_widget show_widget 
+            add_tooltip add_button add_link_button 
             add_filechooser_button add_font_button add_check_button 
             add_radio_button add_label add_frame add_entry add_spin_button 
             add_combo_box add_slider add_scroll_bar add_image add_drawing_area 
@@ -68,7 +208,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $GETTEXT $LANGUAGE $LC
             set_font_color remove_nb_page initial_draw set_sb_text remove_sb_text 
             clear_sb_stack modify_list_data modify_tree_data);
 
-$VERSION = '0.65';
+$VERSION = '0.66';
 $LANGUAGE = $ENV{LANG} || 'en_US.UTF-8';
 $CODESET = langinfo(CODESET());
 $GETTEXT = 0;
@@ -130,7 +270,7 @@ sub _extend {
     my $short = shift;
     
     if ($short =~ /^(pos|tip|func|sig|sens|min|max|orient|valuepos|pixbuf|textbuf|
-                    wrap|climb|col|scroll|prev|cur|no|dtype|mtype|rfunc|fname)/) {
+                    wrap|climb|col|scroll|prev|cur|no|dtype|mtype|rfunc|file|gname)/) {
         if    ($short eq 'pos') {$short = 'position';}
         elsif ($short eq 'tip') {$short = 'tooltip';}
         elsif ($short eq 'func') {$short = 'function';}
@@ -153,7 +293,8 @@ sub _extend {
         elsif ($short eq 'dtype') {$short = 'dialogtype';}
         elsif ($short eq 'mtype') {$short = 'messagetype';}
         elsif ($short eq 'rfunc') {$short = 'responsefunction';}
-        elsif ($short eq 'fname') {$short = 'filename';}
+        elsif ($short eq 'file') {$short = 'filename';}
+        elsif ($short eq 'gname') {$short = 'groupname';}
     }
     return $short;
 }
@@ -235,7 +376,7 @@ sub _set_commons($@) {
     my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
     
     # set tooltip if needed
-    unless($type =~ /^(Menubar|Notebook$|Menu$)/) {
+    unless($type =~ /(MenuBar|Menu$|Dialog$|LinkButton|List|Tree|Notebook$|Statusbar|Separator$|DrawingArea|TextView)/) {
         $self->add_tooltip($object->{name});
     }
     
@@ -258,7 +399,7 @@ sub _set_commons($@) {
                 $object->{height} = $self->_scale(25);
             } else {
                 if ($object->{type} eq 'NotebookPage') {
-                    $widget = $self->get_container($object->{name});
+                    $widget = $self->_get_container($object->{name});
                 }
                 my $req = $widget->size_request();
                 $object->{width} = $req->width;
@@ -279,7 +420,7 @@ sub _add_to_container($@) {
     my $object = $self->get_object($name);
     
     if (defined($object->{container})) {
-        my $container = $self->get_container($object->{container});
+        my $container = $self->_get_container($object->{container});
         my $container_obj = $self->get_object($object->{container});
         
         # calculate position
@@ -317,6 +458,7 @@ sub _calc_scalefactor($@) {
     my $context = $self->{ref}->get_pango_context();
     my $language = $context->get_language();
 
+    # Sans is used as a reference font
     my $old_fdesc = Pango::FontDescription->from_string('Sans ' . $old_size);
     my $old_metrics = $context->get_metrics($old_fdesc, $language);
     my $old_char_widths = $old_metrics->get_approximate_char_width();
@@ -326,7 +468,6 @@ sub _calc_scalefactor($@) {
     my $new_char_widths = $new_metrics->get_approximate_char_width();
     
     my $new_scalefactor = sprintf "%.1f", $new_char_widths/$old_char_widths;
-    #print "new_scalefactor: $new_scalefactor";
     
     return $new_scalefactor;
 }
@@ -387,7 +528,7 @@ sub _update_size_pos_and_font($) {
             if (defined($object->{container})) {
                 my $x = $object->{pos_x};
                 my $y = $object->{pos_y};
-                my $container = $self->get_container($object->{container});
+                my $container = $self->_get_container($object->{container});
                 my $container_obj = $self->get_object($object->{container});
                 
                 # calculate position
@@ -554,15 +695,31 @@ sub _expose_event {
 
 
 ######################################################################
-# Helper functions
+#   Group: Helpers
+#   Helper functions to support things like localization, stderr messages, etc.
 ######################################################################
 
+# *********************************************************************
+#  Class: Localization
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# Specifies a colon separated list of "locale path" in which to search
-# for the string translation file and the translation file.
-# use_gettext(<locale_paths>, <translation_file>, <codeset>)
+#   Function: use_gettext
+#   Activate localization via gettext.
+#
+#   Parameters:
+#   <locale_paths>      - Colon separated list of locale paths to search for translations.
+#   <translation_file>  - Name of the string translation file.
+#   <codeset>           - Name of the used codeset translation file.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  SimpleGtk2::use_gettext("fns-menu-configurator", "$ENV{FVWM_USERDIR}/locale:$ENV{FNS_SYSTEMDIR}/locale:+");
 # ---------------------------------------------------------------------
-sub use_gettext {
+sub use_gettext #(<locale_paths>, <translation_file>, <codeset>)
+{
     my ($app_name, $localepaths) = @_;
     # check where's the + if any
     my $add = 'end';
@@ -604,7 +761,7 @@ sub use_gettext {
 }
 
 # ---------------------------------------------------------------------
-# internal translation function
+# internal translation function used inside of SimpleGtk2
 # ---------------------------------------------------------------------
 sub _ {
     my $text = shift;
@@ -612,19 +769,52 @@ sub _ {
 }
 
 # ---------------------------------------------------------------------
-# external translation function used to translate text part
+#   Function: translate
+#   Translation function used to translate text parts interrupted by variables.
+#
+#   Parameters:
+#   <text>  - Text string to translate.
+#
+#   Returns:
+#   The translated text or its' original.
+#
+#   Example:
+#>  my $multi_menu_title = $win->translate('Menus in') . ' ' . $key;
 # ---------------------------------------------------------------------
-sub translate($$) {
+sub translate #(<text>)
+{
     my $self = shift;
     my $text = shift;
     $text =~ s/\R\h+//g;
     return _($text);
+}
 
 
+# *********************************************************************
+#   Class: Messages
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# internal die if fatal error occur
+#   Function: internal_die
+#   Internal die function if a fatal error occurs.
+#
+#   This may be used to end the program with a corresponding message. 
+#   For a clean exit use <showError> instead. 
+#
+#   Parameters:
+#   <msg>   - Die message printed to stderr.
+#
+#   Returns:
+#   A die message before exiting the program.
+#
+#   Example:
+#>  $win->internal_die($object, "No action defined!");
+#
+#   Output:
+#>  [$win->$ExitButton]: No action defined! Exiting.
 # ---------------------------------------------------------------------
-sub internal_die ($@) {
+sub internal_die #(<msg>)
+{
     my $self = shift;
     my ($object, $msg) = @_;
     $msg =~ s/([^\.!?])$/$1./;
@@ -637,9 +827,23 @@ sub internal_die ($@) {
 
 
 # ---------------------------------------------------------------------
-# print error message to standard error
+#   Function: show_error
+#   Print an error message to standard error.
+#
+#   Parameters:
+#   <msg>   - Error message.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->show_error($nb_object, "No notebook page with number \"$number\" found.");
+#
+#   Output:
+#>  [$win->$nb1][err]: No notebook page with number "123" found.
 # ---------------------------------------------------------------------
-sub show_error ($@) {
+sub show_error #(<msg>)
+{
     my $self = shift;
     my ($object, $msg) = @_;
     if (defined($msg)) {
@@ -651,9 +855,23 @@ sub show_error ($@) {
 
 
 # ---------------------------------------------------------------------
-# print message to standard error
+#   Function: show_message
+#   Print a message to standard error.
+#
+#   Parameters:
+#   <msg>   - Message text.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->show_message("xcompmgr not installed. Ignoring.");
+#
+#   Output:
+#>  [FNS-CompConfigurator][msg]: xcompmgr not installed. Ignoring.
 # ---------------------------------------------------------------------
-sub show_message ($@) {
+sub show_message #(<msg>)
+{
     my $self = shift;
     my ($object, $msg) = @_;
     if (defined($msg)) {
@@ -665,15 +883,36 @@ sub show_message ($@) {
 
 
 ######################################################################
-# Support Functions
-# Common functions for signaling, object handling, etc.
+#   Group: Support Functions
+#   Common functions for signaling, object handling, etc.
 ######################################################################
 
+# *********************************************************************
+#   Class: Signaling
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add signal to widget
-# add_signal_handler(<name>, <signal>, <function>, <data>)
+#   Function: add_signal_handler
+#   Adds a signal handler to a widget.
+#
+#   It connects a signal to a sub procedure related to the widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#   <signal>    - Signal which will be "emitted" by the widget. See <Gtk2+ documentation at https://developer.gnome.org/gtk2/stable/index.html> for more info.
+#   <function>  - Function to be executed if signal appears.
+#   [<data>]    - Optional. The data you wish to have passed to this function.
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#>  $win->add_signal_handler('closeButton', 'clicked', sub{Gtk2->main_quit;});
+#>  --------------------------------------
+#>  $win->add_signal_handler('changeIconDir', 'clicked', \&change_path, [$win, 'entryIconDir']);
 # ---------------------------------------------------------------------
-sub add_signal_handler($@) {
+sub add_signal_handler #(<name>, <signal>, <function>, [<data>])
+{
     my $self = shift;
     my ($name, $signal, $function, $data) = @_;
     my $id;
@@ -702,10 +941,23 @@ sub add_signal_handler($@) {
 }
 
 # ---------------------------------------------------------------------
-# remove signal handler from widget
-# remove_signal_handler(<name>, <signal>)
+#   Function: remove_signal_handler
+#   Removes a signal handler (signal-function pair) from a widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#   <signal>    - Signal which should removed from the widget.
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#>  $win->remove_signal_handler('closeButton', 'clicked');
+#>  --------------------------------------
+#>  $win->remove_signal_handler('changeIconDir', 'clicked');
 # ---------------------------------------------------------------------
-sub remove_signal_handler($@) {
+sub remove_signal_handler #(<name>, <signal>)
+{
     my $self = shift;
     my ($name, $signal) = @_;
     
@@ -717,11 +969,30 @@ sub remove_signal_handler($@) {
 }
 
 
+# *********************************************************************
+#   Class: Object Handling
+# *********************************************************************
 # ---------------------------------------------------------------------
-# get object hash from objects list
-# get_object(<name_or_widget>)
+#   Function: get_object
+#   Get the SimpleGtk2 widget hash from internal objects list.
+#
+#   Parameters:
+#   <name>      - Name of a widget. Must be unique.
+#   *OR*
+#   <widget>    - Reference object of a widget (e.g. Gtk2::Button).
+#
+#   Returns:
+#   Object hash
+#
+#   Examples:
+#>  # with name
+#>  $win->get_object('NB_page' . $number)->{pagelabel}->set_sensitive($state);
+#>  --------------------------------------
+#>  # with widget reference
+#>  my $object_name = $win->get_object($widget)->{name};
 # ---------------------------------------------------------------------
-sub get_object($$) {
+sub get_object #(<name|widget>)
+{
     my $self = shift;
     my $identifier = shift;
     my $object = undef;
@@ -744,11 +1015,24 @@ sub get_object($$) {
     return $object;
 }
 
+
 # ---------------------------------------------------------------------
-# check if object xyz exist. Return 1 if true else 0
-# exist_object(<name_or_widget>)
+#   Function: exist_object
+#   Check function if SimpleGtk2 object xyz exists.
+#
+#   Parameters:
+#   <name>      - Name of a widget. Must be unique.
+#   *OR*
+#   <widget>    - Gtk2 reference object of a widget (e.g. Gtk2::Button).
+#
+#   Returns:
+#   1 if true else 0.
+#
+#   Example:
+#>  if (defined($win->exist_object('entrySplashPath'))) { ... }
 # ---------------------------------------------------------------------
-sub exist_object($$) {
+sub exist_object #(<name|widget>)
+{
     my $self = shift;
     my $identifier = shift;
     my $exist = 0;
@@ -767,11 +1051,56 @@ sub exist_object($$) {
 }
 
 
+# *********************************************************************
+#   Class: Widget Handling
+# *********************************************************************
 # ---------------------------------------------------------------------
-# get widget reference
-# get_widget(<name>)    <= must be unique
+#   Function: get_widget
+#   Get a Gtk2 widget reference of a SimpleGtk2 object.
+#
+#   Restriction:
+#   Not available for the following widget: <GtkNotebookPage>.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   A Gtk2 widget reference.
+#
+#   Example:
+#>  $win->add_signal_handler('checkEnabled' . $name_number, 'toggled', sub {&on_checkbox_enabled_toggled($win->get_widget('comboResolution' . $name_number), $name);});
 # ---------------------------------------------------------------------
-sub get_widget($$) {
+sub get_widget #(<name>)
+{
+    my $self = shift;
+    my $name = shift;
+    my $object = $self->get_object($name);
+    my $widget_ref;
+    unless ($object->{type} =~ /^(Image|Statusbar|TextView|MenuBar|Separator|DrawingArea)$/) {
+        $widget_ref = $self->{objects}->{$name}->{ref};
+    } else {
+        unless ($object->{type} eq 'NotebookPage') {
+            if ($object->{type} eq 'Image') {$widget_ref = $object->{image};}
+            elsif ($object->{type} eq 'Statusbar') {$widget_ref = $object->{statusbar};}
+            elsif ($object->{type} eq 'TextView') {$widget_ref = $object->{textview};}
+            elsif ($object->{type} eq 'MenuBar') {$widget_ref = $object->{menubar};}
+            elsif ($object->{type} eq 'Separator') {$widget_ref = $object->{separator};}
+            elsif ($object->{type} eq 'DrawingArea') {$widget_ref = $object->{drawing_area};}
+            elsif ($object->{type} =~ /List|Tree/) {$widget_ref = $object->{treeview};}
+        } else {
+            $self->internal_die("$name is a notebook page which hasn't an own widget reference!");
+        }
+    }
+
+    return $widget_ref;
+}
+
+
+# ---------------------------------------------------------------------
+# get internal object widget reference
+# _get_ref(<name>)    <= must be unique
+# ---------------------------------------------------------------------
+sub _get_ref($$) {
     my $self = shift;
     my $name = shift;
     return $self->{objects}->{$name}->{ref};
@@ -779,17 +1108,30 @@ sub get_widget($$) {
 
 
 # ---------------------------------------------------------------------
-# hide a widget
-# hide_widget(<name>)
+#   Function: hide_widget
+#   Hide a widget.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuItem>, <GtkMenuBar> and <GtkNotebookPage>.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->add_signal_handler('image1', 'button_press_event', sub{$win->hide_widget('frame1');});
 # ---------------------------------------------------------------------
-sub hide_widget($$) {
+sub hide_widget #(<name>)
+{
     my $self = shift;
     my $name = shift;
 
     my $object = $self->get_object($name);
     my $type = $object->{type};
     
-    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
+    unless($type =~ /(MenuBar|MenuItem$|Menu$|NotebookPage)/) {
         $object->{ref}->hide();
     } else {
         $self->show_error($object, "For \"$type\" use set_sensitive() instead.");
@@ -799,17 +1141,30 @@ sub hide_widget($$) {
 
 
 # ---------------------------------------------------------------------
-# show a widget
-# show_widget(<name>)
+#   Function: show_widget
+#   Show a hidden widget.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuItem>, <GtkMenuBar> and <GtkNotebookPage>.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->add_signal_handler('image1', 'button_press_event', sub{$win->show_widget('frame1');});
 # ---------------------------------------------------------------------
-sub show_widget($$) {
+sub show_widget #(<name>)
+{
     my $self = shift;
     my $name = shift;
 
     my $object = $self->get_object($name);
     my $type = $object->{type};
     
-    unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
+    unless($type =~ /(MenuBar|MenuItem$|Menu$|NotebookPage)/) {
         $object->{ref}->show();
     } else {
         $self->show_error($object, "For \"$type\" use set_sensitive() instead.");
@@ -819,25 +1174,50 @@ sub show_widget($$) {
 
 
 # ---------------------------------------------------------------------
-# get sensitive state
-# is_sensitive(<name>)
+#   Function: is_sensitive
+#   Returns the sensitive state of a widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   The sensitive state - 0 (inactive) or 1 (active).
+#
+#   Example:
+#>  my $state = $win->is_sensitive('Check1');
 # ---------------------------------------------------------------------
-sub is_sensitive($@) {
+sub is_sensitive #(<name>)
+{
     my $self = shift;
     my $name = @_;
     
     # get widget
-    my $widget = $self->get_widget($name);
+    my $widget = $self->_get_ref($name);
     
     return $widget->is_sensitive();
 }
 
 
 # ---------------------------------------------------------------------
-# set sensitivity of a widget or a radio button group
-# set_sensitive(<name/group>, <state>)
+#   Function: set_sensitive
+#   Set sensitivity of a widget, a radio group or notebook page.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#   *OR*
+#   <group>     - Name of the radio group. Must be unique.
+#   <state>     - New sensitivity state of the widget/radio group/notebook page.
+#                 0 (inactive) or 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  # deactivation of a radio group
+#>  $win->set_sensitive('r_state', 0);
 # ---------------------------------------------------------------------
-sub set_sensitive($@) {
+sub set_sensitive #(<name|group>, <state>)
+{
     my $self = shift;
     my ($name, $state) = @_;
     my $widget;
@@ -861,7 +1241,7 @@ sub set_sensitive($@) {
         }
     } else {
         if (exists $self->{groups}->{$name}) {
-            $widget = $self->get_widget($self->{groups}->{$name}[0]);
+            $widget = $self->_get_ref($self->{groups}->{$name}[0]);
             my $group = $widget->get_group();
             foreach (@$group) {
                 $_->set_sensitive($state);
@@ -874,11 +1254,32 @@ sub set_sensitive($@) {
 
 
 # ---------------------------------------------------------------------
-# get the title of a widget
-# TODO: Perhaps it has to changed to widget specific get functions
-# get_title(<name>)
+#   Function: get_title
+#   Returns the title text of a widget or the active value of a combo box.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkSlider>, <GtkScrollBar>, <GtkImage>, <GtkTextView>, <GtkMenuBar>, <GtkNotebook>.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   The title text or undef.
+#
+#   Examples:
+#>  # check whether a combo box value is currently set
+#>  unless ($win->get_title('comboWindow') eq 'TopLeft') {
+#>      &set_config_value('WindowsPlacement', $win->get_title('comboWindow'));
+#>  }
+#>  --------------------------------------
+#>  # print window title with message to standard error
+#>  print STDERR "[" . $win->get_title($win->{name}) . "]: $user_cfg saved.\n";
 # ---------------------------------------------------------------------
-sub get_title($$) {
+sub get_title #(<name>)
+{
+# ---------------------------------------------------------------------
+# TODO: Perhaps it has to changed to widget specific get functions
+# ---------------------------------------------------------------------
     my $self = shift;
     my $name = shift;
     
@@ -902,10 +1303,28 @@ sub get_title($$) {
 
 
 # ---------------------------------------------------------------------
-# set title of a widget
-# set_title(<name>, <new_title>)
+#   Function: set_title
+#   Sets the new title text of a widget or the active value of a combo box.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkSlider>, <GtkScrollBar>, <GtkImage>, <GtkTextView>, <GtkMenuBar>, <GtkNotebook>.
+#
+#   Parameters:
+#   <name>          - Name of the widget. Must be unique.
+#   <new_title>     - New title text for the widget or new active value for the combo box.
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#>  # set label text depending on the current max virt size
+#>  $win->set_title('labelMaxSizeValue', $xrandr->getMaxVirtSize());
+#>  --------------------------------------
+#>  # set new title of the notebook page 2
+#>  $win->set_title("NB_page2", "1Bibbile");
 # ---------------------------------------------------------------------
-sub set_title($@) {
+sub set_title #(<name>, <new_title>)
+{
     my $self = shift;
     my ($name, $new_title) = @_;
     
@@ -954,10 +1373,23 @@ sub set_title($@) {
 
 
 # ---------------------------------------------------------------------
-# get size of a widget
-# get_size(<name>)
+#   Function: get_size
+#   Returns the current width and height (in pixel) of a widget.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuItem>, <GtkNotebookPage>.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   An array of the current width and height or undef.
+#
+#   Example:
+#>  my ($width, $height) = $win->get_size('Image1');
 # ---------------------------------------------------------------------
-sub get_size($$) {
+sub get_size #(<name>)
+{
     my $self = shift;
     my $name = shift;
 
@@ -974,10 +1406,25 @@ sub get_size($$) {
 
 
 # ---------------------------------------------------------------------
-# set size of a widget
-# set_size(<name>, <new_width>, <new_height>)
+#   Function: set_size
+#   Sets the new size of a widget.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkCheckButton>, <GtkRadioButton>, <GtkLabel>, <GtkMenu>, <GtkMenuItem>, <GtkNotebookPage>.
+#
+#   Parameters:
+#   <name>              - Name of the widget. Must be unique.
+#   <new_width>         - New width of the widget.
+#   <new_height>        - New height of the widget.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->set_size('image1', 200, 100);
 # ---------------------------------------------------------------------
-sub set_size($@) {
+sub set_size #(<name>, <new_width>, <new_height>)
+{
     my $self = shift;
     my ($name, $width, $height) = @_;
     
@@ -1020,10 +1467,23 @@ sub set_size($@) {
 
 
 # ---------------------------------------------------------------------
-# get position of a widget
-# get_pos(<name>)
+#   Function: get_pos
+#   Returns the current position (in pixel) of a widget.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuItem>, <GtkNotebookPage>.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   An array of the current x and y position or undef.
+#
+#   Example:
+#>  my ($pos_x, $pos_y) = $win->get_pos('cbox1');
 # ---------------------------------------------------------------------
-sub get_pos($$) {
+sub get_pos #(<name>)
+{
     my $self = shift;
     my $name = shift;
     
@@ -1040,10 +1500,25 @@ sub get_pos($$) {
 
 
 # ---------------------------------------------------------------------
-# set position of a widget
-# set_pos(<name>, <new_x>, <new_y>)
+#   Function: set_pos
+#   Sets the new position of a widget.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuItem>, <GtkNotebookPage>.
+#
+#   Parameters:
+#   <name>          - Name of the widget. Must be unique.
+#   <new_x>         - New x-position of the widget.
+#   <new_y>         - New y-position of the widget.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->set_pos('check_button', 10, 45);
 # ---------------------------------------------------------------------
-sub set_pos($@) {
+sub set_pos #(<name>, <new_x>, <new_y>)
+{
     my $self = shift;
     my ($name, $pos_x, $pos_y) = @_;
 
@@ -1052,7 +1527,7 @@ sub set_pos($@) {
     
     unless($type =~ /^(MenuItem|Menu$|NotebookPage)/) {
         if (defined($object->{container})) {
-            my $container = $self->get_container($object->{container});
+            my $container = $self->_get_container($object->{container});
             my $frame = $self->get_object($object->{container});
                 
             # calculate position
@@ -1075,12 +1550,21 @@ sub set_pos($@) {
 
 
 # ---------------------------------------------------------------------
-# get active state of Check- and RadioButtons. Also from GtkSpinner
-# is_active(<name>)
-# get state whether a given value/string is current active in a combobox
-# is_active(<name>, <value>)
+#   Function: is_active
+#   Returns the state of Check- and RadioButtons or for given combobox value/string.
+#
+#   Parameters:
+#   <name>              - Name of the widget. Must be unique.
+#   <value/string>      - A given combobox value/string.
+#
+#   Returns:
+#   An array of the current x and y position or undef.
+#
+#   Example:
+#>  my ($pos_x, $pos_y) = $win->get_pos('cbox1');
 # ---------------------------------------------------------------------
-sub is_active($@) {
+sub is_active #(<name>, [<value/string>])
+{
     my $self = shift;
     my ($name, $value) = @_;
     
@@ -1119,10 +1603,20 @@ sub is_active($@) {
 
 
 # ---------------------------------------------------------------------
-# has text an underline?
-# is_underlined(<text>)
+#   Function: is_underlined
+#   Returns the state of a text whether it has an underline.
+#
+#   Parameters:
+#   <text>              - Text to check.
+#
+#   Returns:
+#   1 for underlined else 0.
+#
+#   Example:
+#>  if ($win->is_underlined($object->{title})) { ... }
 # ---------------------------------------------------------------------
-sub is_underlined($@) {
+sub is_underlined #(<text>)
+{
     my $self = shift;
     my $text = shift;
     
@@ -1136,9 +1630,143 @@ sub is_underlined($@) {
 
 
 # ---------------------------------------------------------------------
-# get_value(<name>, <keyname> | <keyname> => <value>)
+#   Function: get_value
+#   Returns a current value of a widget.
+#
+#   Parameters:
+#   <name>                      - Name of a widget.
+#   <keyname>                   - Keyword of a value.
+#   *OR*
+#   <keyname> => <value>        - Nth value of the keyword array|hash.
+#   
+#   _KEYNAMES_: 
+#   
+#   GtkCheckButton: 
+#   "Active"                    - The current state of the check button.
+#   
+#   GtkRadioButton: 
+#   "Active"                    - The current state of the radio button.
+#   "Group"                     - The current group object/reference.
+#   "Groupname|Gname"           - The current group name (string).
+#   
+#   GtkLinkButton:  
+#   "Uri"                       - The current uri of the link button.
+#   
+#   GtkFontButton:  
+#   "Fontstring"                - The current font string (family, size, weight) of the font button.
+#   "Fontfamily"                - The current font family.
+#   "Fontsize"                  - The current font size.
+#   "Fontweight"                - The current font weight.
+#   
+#   GtkLabel:   
+#   "Wrap|Wrapped"              - Returns whether lines in the label are automatically wrapped.
+#   "Justify"                   - The current justification of the label.
+#   
+#   GtkEntry:   
+#   "Align"                     - The current alignment string of the entry.
+#   
+#   GtkSpinButton:  
+#   "Active"                    - The current active value of the spin button.
+#   "Align"                     - The current alignment for the contents.
+#   "Min|Minimum"               - The current minimum value.
+#   "Max|Maximum"               - The current maximum value.
+#   "Step"                      - The current step increment.
+#   "Snap"                      - Returns whether the values are corrected to the nearest step.
+#   "Rate|Climbrate"            - The current amount of acceleration that the spin button actually has.
+#   "Digits"                    - The current number of decimal places the value is displayed.
+#   
+#   GtkComboBox:    
+#   "Active"                    - The current index of the active value.
+#   "Data"                      - The current data array of the combo box.
+#   "Columns"                   - The current number of columns to display.
+#   
+#   GtkSlider:  
+#   "Active"                    - The current active value of the slider.
+#   "Min|Minimum"               - The current minimum value.
+#   "Max|Maximum"               - The current maximum value.
+#   "Step"                      - The current step increment.
+#   "DrawValue"                 - The current active value as a string.
+#   "ValuePos|ValuePosition"    - The position in which the current value is displayed.
+#   "Digits"                    - The current number of decimal places the value is displayed.
+#
+#   GtkScrollbar:
+#   "Active"                    - The current active value of the scrollbar.
+#   "Min|Minimum"               - The current minimum value.
+#   "Max|Maximum"               - The current maximum value.
+#   "Step"                      - The current step increment.
+#   "Digits"                    - The current number of decimal places the value is displayed.
+#
+#   GtkTextView:
+#   "LeftMargin"                - The current left margin size of paragraphs in the text view.
+#   "RightMargin"               - The current right margin size of paragraphs.
+#   "Wrap|Wrapped"              - The current wrap mode.
+#   "Justify"                   - The current justification.
+#
+#   *Note:* "Path", "Textview" and "Textbuf|Textbuffer" can get with <get_textview>.
+#   
+#   GtkMenu:    
+#   "Justify"                   - The current justification of the menu.
+#   
+#   GtkMenuItem:    
+#   "IconPath"                  - The current path of the used icon on a standard menu item or undef.
+#   "StockIcon"                 - The current stock id of the used stock icon or undef.
+#   "IconName"                  - The current name of the used theme icon or undef.
+#   "Icon"                      - The current path/stock id/name of the used icon or undef.
+#   "Active"                    - The current state of a radio menu item.
+#   "Group"                     - The current group object/reference.
+#   "Groupname|Gname"           - The current group name (string).
+#   
+#   GtkNotebook:    
+#   "Current|CurrentPage"       - The page number of the current page.
+#   "Pages"                     - The number of pages in the notebook.
+#   "Popup"                     - Returns 1 whether the popup is activated. Else 0.
+#   "No2Name|Number2Name"       - The page name with the page number.
+#   "Scroll|Scrollable"         - Returns whether the tab label area has arrows for scrolling.
+#   "Tabs"                      - The edge at which the tabs are drawn or "none".
+#   
+#   GtkNotebookPage:    
+#   "PageNumber"                - The page number of the notebook page.
+#   "Notebook"                  - The name of the notebook.
+#   
+#   GtkFontButton:  
+#   "fontstring"                - The string of the current font e.g "Arial Rounded MT Bold, Bold Italic 12".
+#   "fontfamily"                - The current font family ("Arial Rounded MT Bold").
+#   "fontsize"                  - The current font size ("12").
+#   "fontweight"                - The current font weight ("Bold Italic").
+#       
+#   GtkFontSelectionDialog: 
+#   "previewstring"             - The current preview text of the font selection dialog.
+#   "fontstring"                - The current font string e.g "Arial Rounded MT Bold, Bold Italic 12".
+#   "fontfamily"                - The current font family ("Arial Rounded MT Bold").
+#   "fontsize"                  - The current font size ("12").
+#   "fontweight"                - The current font weight ("Bold Italic").
+#   
+#   GtkStatusbar:   
+#   "message"                   - The text for the given message-id
+#   "msgid"                     - The message id for the given text. If "last" is given the last message id.
+#   "stackref"                  - The stack reference.
+#   "stackcount"                - The stack count.
+#
+#   GtkTreeView::List:
+#   "editable"                  - Whether the in-place editing on column <index> is enabled (1).
+#   "path"                      - The path of row <index> (0 indexed) or the paths if an index array is given.
+#   "cell"                      - The value of a cell given as an array with [<row_index>, <column_index>] 0 indexed.
+#
+#   GtkTreeView::Tree:
+#   "iter"                      - The iter of the current selected element.
+#   "path"                      - The path of the current selected element.
+#   "row"                       - The row values as an array of the given iter.
+#
+#   Returns:
+#   The found value.
+#
+#   Examples:
+#>  if ($win->get_value("comboMaxFreq" . $a, "active") != $win->get_value("comboMaxFreqCommon", "active")) { ... }
+#>  --------------------------------------
+#>  my $rowref = $window->get_value("slist", path => $index);
 # ---------------------------------------------------------------------
-sub get_value($@) {
+sub get_value #(<name>, <keyname>, or <keyname> => <value>)
+{
     my $self = shift;
     my $name = shift;
     my @key_value = @_;
@@ -1154,6 +1782,14 @@ sub get_value($@) {
         if    ($key eq 'active') {$value = $object->{ref}->is_active();}
     }
     
+    # Radio button and menu
+    elsif ($object->{type} =~ /^Radio/) {
+        # radio button/menu group object
+        if    ($key eq 'group') {$value = $object->{ref}->get_group();}
+        # radio button/menu group name
+        elsif    ($key eq 'groupname') {$value = $object->{group};}
+    }
+
     # Link button
     elsif ($object->{type} eq 'LinkButton') {
         # get uri
@@ -1504,9 +2140,134 @@ sub get_value($@) {
 
 
 # ---------------------------------------------------------------------
-# set_value(<name>, Value/MaxValue/MinValue => <new_value>)
+#   Function: set_value
+#   Sets a new value for a widget.
+#
+#   Parameters:
+#   <name>                      - Name of a widget.
+#   <keyname> => <new_value>    - Keyword of a value and its new value.
+#
+#   _KEYNAMES_:
+#
+#   GtkCheckButton:
+#   Active                  => <0/1>                        - The new state of the check button. 0 (deactivated) or 1 (activated).
+#               
+#   GtkRadioButton:             
+#   Active                  => <0/1>                        - The new state of the radio button. 0 (deactivated) or 1 (activated).
+#               
+#   GtkLinkButton:              
+#   Uri                     => <uri-text>                   - The new uri of the link button.
+#               
+#   GtkFontButton:              
+#   Fontstring              => <font-string>                - The new font string (family, size, weight) of the font button.
+#   Fontfamily              => <fontfamily>                 - The new font family.
+#   Fontsize                => <fontsize>                   - The new font size.
+#   Fontweight              => <fontweight>                 - The new font weight.
+#               
+#   GtkLabel:               
+#   Wrap|Wrapped            => <0/1>                        - The new wrapping of the text. 0 (off) or 1 (on).
+#   Justify                 => <justification>              - The new justification of the text: left, right, center or fill,
+#               
+#   GtkEntry:               
+#   Align                   => <xalign>                     - The new alignment of the entry: left or right.
+#               
+#   GtkSpinButton:                  
+#   Start                   => <start_value>                - The new start value of the spin button.
+#   Active                  => <active_value>               - The new active value.
+#   Min|Minimum             => <min_value>                  - The new minimum value.
+#   Max|Maximum             => <max_value>                  - The new maximum value.
+#   Step                    => <step_value>                 - The new step increment.
+#   Snap                    => <0/1>                        - Sets the new policy as to whether values are corrected to the nearest step increment when an invalid value is provided.
+#   Rate|Climbrate          => <climb_rate>                 - The new amount of acceleration that the spin button shall has.
+#   Digits                  => <used_digits>                - The new number of decimal places the value will be displayed.
+#                   
+#   GtkComboBox:                    
+#   Active                  => <active_index>               - The active item of the combo box to be the item at index.
+#   Data                    => [<Array_of_values>]          - The new array of values/strings being displayed in the combo box.
+#   Columns                 => <wrap_to_x_columns>          - The current number of columns to display.
+#                   
+#   GtkSlider:                  
+#   Start                   => <start_value>                - The new start value of the slider.
+#   Active                  => <active_value>               - The new active value.
+#   Min|Minimum             => <min_value>                  - The new minimum value.
+#   Max|Maximum             => <max_value>                  - The new maximum value.
+#   Step                    => <step_value>                 - The new step increment.
+#   DrawValue               => <0/1>                        - Specifies whether the current value is displayed as a string next to the slider.
+#   ValuePos|ValuePosition  => <value_position>             - The new position where the current value will be displayed.
+#   Digits                  => <used_digits>                - The new number of decimal places the value will be displayed.
+#           
+#   GtkScrollbar:           
+#   Start                   => <start_value>                - The new start value of the scrollbar.
+#   Active                  => <active_value>               - The new active value.
+#   Min|Minimum             => <min_value>                  - The new minimum value.
+#   Max|Maximum             => <max_value>                  - The new maximum value.
+#   Step                    => <step_value>                 - The new step increment.
+#   Digits                  => <used_digits>                - The new number of decimal places the value will be displayed.
+#           
+#   GtkTextView:            
+#   LeftMargin              => <in_pixel>                   - The new left margin size of paragraphs in the text view.
+#   RightMargin             => <in_pixel>                   - The new right margin size of paragraphs.
+#   Wrap|Wrapped            => <wrap_mode>                  - The new wrap mode.
+#   Justify                 => <justification>              - The new justification.
+#
+#   _Note:_ 'Path', 'Textview' and 'Textbuf|Textbuffer' can set with <set_textview>.
+#   
+#   GtkMenu:    
+#   Justify                 => <justification>              - The new justification of the menu.
+#               
+#   GtkMenuItem:                
+#   Icon                    => <path|stock|name>            - The new path of an icon or its' stock id ('Stock') or its' icon name ('Name') on a standard menu item.
+#   Active                  => <0/1>                        - The new state of a radio menu item.
+#   
+#   GtkNotebook:    
+#   Current|CurrentPage     => <page_number|next|prev>      - The new current page. Possible values: <page_number>, 'Next' or 'Prev'.
+#   Popup                   => <0/1>                        - Enables (1) or disables (0) the popup menu.
+#   Scroll|Scrollable       => <0/1>                        - Sets whether the tab label area will have arrows for scrolling.
+#   Tabs                    => <edges>                      - The edge at which the tabs are drawn.
+#   
+#   GtkNotebookPage:    
+#   Reorder                 => <0/1>                        - Sets the notebook page to a new position.
+#   
+#   GtkFontButton:  
+#   fontstring              => <font_string>                - The new used font as string. Font family and size are required.
+#   fontfamily              => <font_family>                - The new font family.
+#   fontsize                => <font_size>                  - The new font size.
+#   fontweight              => <font_weight>                - The new font weight.
+#       
+#   GtkFontSelectionDialog: 
+#   previewstring           => <preview_text>               - The new preview text of the font selection dialog.
+#   fontstring              => <font_string>                - The new used font as string. Font family and size are required.
+#   fontfamily              => <font_family>                - The new font family.
+#   fontsize                => <font_size>                  - The new font size.
+#   fontweight              => <font_weight>                - The new font weight.
+#   
+#   GtkTreeview::List:
+#   mode                    => <selection_mode>             - The new selection mode. Possible values are: 'none', 'single' (default), 'browse' and 'multiple'.
+#   sortable                => <0/1>                        - Set the current column sortable (1) or not (0 - default).
+#   reordable               => <0/1>                        - Set the rows reordable (1) or not (0 - default).
+#   select                  => <row|[row_list]>             - Select row(s) in the list by index. If the list is set for multiple selection, 
+#                                                             all indices in the list will be set/unset; otherwise, just the first is used. 
+#                                                             If the list is set for no selection, then nothing happens.
+#   unselect                => <row|[row_list]>             - Unselect row(s) in the list by index.
+#
+#   GtkTreeview::Tree:
+#   mode                    => <selection_mode>             - The new selection mode. Possible values are: 'none', 'single' (default), 'browse' and 'multiple'.
+#   sortable                => <0/1>                        - Set the current column sortable (1) or not (0 - default).
+#   reordable               => <0/1>                        - Set the rows reordable (1) or not (0 - default).
+#   iter                    => <iter>                       - The iter of the current selected element.
+#   path                    => <path_object>                - The path object of the current selected element.
+#   row                     => [row_values]                 - The new row values as an array of the given iter.
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#>  $win->set_value('NB1', Currentpage => $win->get_value('NB1', Title2number => $out));
+#>  --------------------------------------
+#>  $spin_button->set_value($cell->get("value"));
 # ---------------------------------------------------------------------
-sub set_value($@) {
+sub set_value #(<name>, <keyname> => <new_value>)
+{
     my $self = shift;
     my $name = shift;
     my %params = @_;
@@ -1520,9 +2281,26 @@ sub set_value($@) {
 
 
 # ---------------------------------------------------------------------
-# set_values(<name>, Value_x => <new_value>, Value_y => <new_value>, ...)
+#   Function: set_values
+#   Set a bunch of new values for a widget.
+#
+#   Parameters:
+#   <name>                  - Name of a widget.
+#   <keyname>               - Keyword of a value and its new value.
+#
+#   _KEYNAMES_:
+#   See <set_value> for possible keynames.
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#>  $win->set_values('spinDesktopX', Start => $current_x_desks, Min => 1, Max => $max, Step => 1);
+#>  --------------------------------------
+#>  $win->set_values($name, Data => $item_list_ref, Start => $active_item_nr);
 # ---------------------------------------------------------------------
-sub set_values($@) {
+sub set_values #(<name>, <keyname> => <new_value>, <keyname> => <new_value>, ...)
+{
     my $self = shift;
     my $name = shift;
     my %params = $self->_normalize(@_);
@@ -1930,12 +2708,37 @@ sub set_values($@) {
 }
 
 
+# *********************************************************************
+#   Class: Font Handling
+# *********************************************************************
 # ---------------------------------------------------------------------
-# get the current fontsize of a widget
-# get_fontsize(<widget>)
+#   Function: get_fontsize
+#   Returns the current font size of a widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#   *OR*
+#   <widget>    - Gtk2 reference object of a widget (e.g. Gtk2::Button).
+#
+#   Returns:
+#   The font size.
+#
+#   Example:
+#>  my $fontsize = get_fontsize($window);
 # ---------------------------------------------------------------------
-sub get_fontsize($) {
-    my $widget = shift;
+sub get_fontsize #(<name|widget>)
+{
+    my $self = shift;
+    my $name_widget = shift;
+    my $widget;
+    
+    if (defined($name_widget)) {
+        my $object = $self->get_object($name_widget);
+        $widget = $self->get_widget($object->{name})
+    } else {
+        $widget = $self;
+    }
+
     my $context = $widget->get_pango_context();
     my $fontDesc = $context->get_font_description();
     my $language = $context->get_language();
@@ -1953,23 +2756,68 @@ sub get_fontsize($) {
 
 
 # ---------------------------------------------------------------------
-# get the current font family of a widget
-# get_fontfamily(<widget>)
+#   Function: get_fontfamily
+#   Returns the current font family of a widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#   *OR*
+#   <widget>    - Gtk2 reference object of a widget (e.g. Gtk2::Button).
+#
+#   Returns:
+#   The font family.
+#
+#   Example:
+#>  my $fontsize = get_fontsize($window);
 # ---------------------------------------------------------------------
-sub get_fontfamily($) {
-    my $widget = shift;
+sub get_fontfamily #(<name|widget>)
+{
+    my $self = shift;
+    my $name_widget = shift;
+    my $widget;
+    
+    if (defined($name_widget)) {
+        my $object = $self->get_object($name_widget);
+        $widget = $self->get_widget($object->{name})
+    } else {
+        $widget = $self;
+    }
+
     my $context = $widget->get_pango_context();
     my $fontDesc = $context->get_font_description();
     my $fontfamily = $fontDesc->get_family();
     return $fontfamily
 }
 
+
 # ---------------------------------------------------------------------
-# get the current font weight of a widget
-# get_fontweight(<widget>)
+#   Function: get_fontweight
+#   Returns the current font weight of a widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#   *OR*
+#   <widget>    - Gtk2 reference object of a widget (e.g. Gtk2::Button).
+#
+#   Returns:
+#   The font weight.
+#
+#   Example:
+#>  my $fontweight = get_fontweight($window);
 # ---------------------------------------------------------------------
-sub get_fontweight($) {
-    my $widget = shift;
+sub get_fontweight #(<name|widget>)
+{
+    my $self = shift;
+    my $name_widget = shift;
+    my $widget;
+    
+    if (defined($name_widget)) {
+        my $object = $self->get_object($name_widget);
+        $widget = $self->get_widget($object->{name})
+    } else {
+        $widget = $self;
+    }
+
     my $context = $widget->get_pango_context();
     my $fontDesc = $context->get_font_description();
     my @fontarray = &font_string_to_array($fontDesc->to_string());
@@ -1982,10 +2830,20 @@ sub get_fontweight($) {
 
 
 # ---------------------------------------------------------------------
-# get font from object
-# get_font_string(<name>)
+#   Function: get_font_string
+#   Returns the current font string of a widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   The font size.
+#
+#   Example:
+#>  $testfont = $win->get_font_string('frame1');
 # ---------------------------------------------------------------------
-sub get_font_string($$) {
+sub get_font_string #(<name>)
+{
     my $self = shift;
     my $name = shift;
 
@@ -2017,10 +2875,20 @@ sub get_font_string($$) {
 }
 
 # ---------------------------------------------------------------------
-# get font as array - font string split into array format
-# get_font_array(<name>)
+#   Function: get_font_array
+#   Returns current font string of a widget as an array.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#
+#   Returns:
+#   A font array [family, size, weight].
+#
+#   Example:
+#>  my @fontarray = $win->get_font_array('frame1');
 # ---------------------------------------------------------------------
-sub get_font_array($@) {
+sub get_font_array #(<name>)
+{
     my $self = shift;
     my $name = shift;
 
@@ -2043,11 +2911,21 @@ sub get_font_array($@) {
 }
 
 # ---------------------------------------------------------------------
-# font_array_to_string <= Build from a font array a font string. 
-# Font family and size is requiered.
-# Array: [family, size, weight]
+#   Function: font_array_to_string
+#   Converts a font array into a font string.
+#
+#   Parameters:
+#   <font_array>      - Font as an array like [family, size[, weight]]. Font family AND size is required.
+#
+#   Returns:
+#   A font string.
+#
+#   Example:
+#>  my @fontarray = (Sans, 12);
+#>  my $fontstring = font_array_to_string(@fontarray);
 # ---------------------------------------------------------------------
-sub font_array_to_string(@) {
+sub font_array_to_string #(<font_array>)
+{
     my @font_array = @_;
     my $font_string;
     # check if comma is needed
@@ -2071,10 +2949,20 @@ sub font_array_to_string(@) {
 
 
 # ---------------------------------------------------------------------
-# font_string_to_array <= Build from a font string a font array. 
-# Font family AND size is requiered.
+#   Function: font_string_to_array
+#   Converts a font string into a font array.
+#
+#   Parameters:
+#   <font_string>      - Font string. Font family AND size is required.
+#
+#   Returns:
+#   A font array [family, size[, weight]].
+#
+#   Example:
+#>  my @fontarray = font_string_to_array('Arial Rounded MT Bold, Bold Italic 12');
 # ---------------------------------------------------------------------
-sub font_string_to_array {
+sub font_string_to_array #(<font_string>)
+{
     my $font_string = shift;
     my @fontarray = [undef, undef, undef];
 
@@ -2101,9 +2989,27 @@ sub font_string_to_array {
 
 
 # ---------------------------------------------------------------------
-# set_font(<name>, <font_string> | [family, size, weight] | Family => family, Size => size, Weight => weight)
+#   Function: set_font
+#   Set new font of a widget.
+#
+#   Parameters:
+#   <name>              - Name of the widget. Must be unique.
+#   <font_string>       - Font string. Font family AND size is required.
+#   *OR*
+#   <font_array>        - Font as an array: [family, size, [weight]]. Font family AND size is required.
+#   *OR*
+#   <Family>            - Font family.
+#   <Size>              - Font size.
+#   <Weight>            - Font weight.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->set_font('frame1', Family => 'Bernard MT Condensed');
 # ---------------------------------------------------------------------
-sub set_font($@) {
+sub set_font #(<name>, <font_string>, or [family, size, [weight]], or Family => <Family>, Size => <Size>, Weight => <Weight>)
+{
     my $self = shift;
     my $name = shift;
     my %params;
@@ -2192,10 +3098,24 @@ sub set_font($@) {
 
 
 # ---------------------------------------------------------------------
-# set_font_color(<name>, <color>, <state>)
-# <state> is optional. Default is 'normal'
+#   Function: set_font_color
+#   Set new font color of a widget.
+#
+#   Parameters:
+#   <name>      - Name of the widget. Must be unique.
+#   <color>     - Font color. Can be a X11 color name or hexadecimal value. See more at <'Table of Color' at http://www.farb-tabelle.de/en/table-of-color.htm>
+#   [<state>]   - Optional. Widget state. Default is 'normal'. For more see <Gtk2-Perl StateType at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Widget.pod.html#enum_Gtk2_StateType>
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#>  $win->set_font_color('checkButton1','red');
+#>  --------------------------------------
+#>  $win->set_font_color('label1', '#8B008B');
 # ---------------------------------------------------------------------
-sub set_font_color($@) {
+sub set_font_color #(<name>, <color>, [<state>])
+{
     my $self = shift;
     my ($name, $new_color, $state) = @_;
     
@@ -2229,24 +3149,57 @@ sub set_font_color($@) {
 
 
 ######################################################################
-# Windows
+#   Group: Windows
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkWindow
+#   Toplevel window which can contain other widgets
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# new Window (  Name => '<name>'                <= must be unique
-#               Title => '<window title>
-#               Version => 'version-string'     <= Optional. Version string of the program. Will be appended after the title
-#               Base => <font_size>             <= This is the font size used while creating the layout. Default is 10
-#               Size => [width, height],        <= Optional
-#               Fixed => <0/1>,                 <= Optional. Default: 0 (resizable)
-#               Iconpath => <icon_path>         <= Optional. Path to an icon shown in title bar or on iconify
-#               ThemeIcon => <theme_icon_name>  <= Optional. Icon name from current theme
-#               Statusbar => <show_time|1>      <= Optional. If set a statusbar will show at the bottom
-#                                                  of the window. <show_time> is the time in milliseconds the
-#                                                  message will show or 1 if no show_time wanted.
-#)
+#   Function: new_window
+#   Creates a new GtkWindow, a toplevel window, that contain other widgets.
+#
+#   It contains by default a fixed container in a scrollable window widget. 
+#   So whether it is resized smaller than defined vertical and/or horizontal 
+#   scrollbars appear.
+#
+#   Parameters:
+#   Name        => <name>               - Name of the window object. Must be unique.
+#   Title       => <window title>       - Title of the window (displayed in the title bar).
+#   [Version    => version-string]      - Optional. Version string of the program. Will be appended after the title.
+#   [Base       => <font_size>]         - Optional. This is the font size used while creating the layout. Default is 10.
+#   [Size       => [width, height]]     - Optional. Width and height of the window.
+#   [Fixed      => <0/1>]               - Optional. Default: 0 (resizable).
+#   [Iconpath   => <icon_path>]         - Optional. Path to an icon shown in title bar or on iconify.
+#   [ThemeIcon  => <theme_icon_name>]   - Optional. Icon name from current theme.
+#   [Statusbar  => <show_time|1>]       - Optional. If set a statusbar is shown at the bottom
+#                                                   of the window. <show_time> is the time in milliseconds the
+#                                                   message will show or 1 if no <show_time> is wanted.
+#
+#   Returns:
+#   The main window object.
+#
+#   Example:
+#   (start code)
+#   my $win = SimpleGtk2->new_window(Name => 'mainWindow', 
+#                           Title      => 'testem-all', 
+#                           Size       => [400, 400], 
+#                           ThemeIcon  => 'emblem-dropbox-syncing');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Window.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkWindow.html>
+#
+#   Available Support Function:
+#   show ()
+#
+#   show_and_run ()
 # ---------------------------------------------------------------------
-sub new_window ($@) {
+sub new_window #(Name => <name>, Title => <window title>, [Version => <version-string>], [Base => <font_size>], [Size => [width, height]], [Fixed => <0/1>], [Iconpath => <icon_path>], [ThemeIcon => <theme_icon_name>], [Statusbar => <show_time|1>])
+{
     my $class = shift;
     my $window;
     my $self = {};
@@ -2264,7 +3217,6 @@ sub new_window ($@) {
     $self->{handler} = {};
     $self->{scalefactor} = 1.0;
     $self->{name} = '';
-    $self->{base} = 10;
     $self->{old_font} = undef;
     $self->{old_fontsize} = undef;
     $self->{allocated_colors} = {};
@@ -2406,10 +3358,19 @@ sub new_window ($@) {
 
 
 # ---------------------------------------------------------------------
-# show window with all widgets without run Gtk2->main
-# this is important if lib will use in FVWM module
+#   Function: show
+#   Show toplevel window with all widgets without running Gtk2->main
+#
+#   This is the default loop function if library will be used in FVWM modules.
+#
+#   Parameters:
+#   None.
+#
+#   Returns:
+#   None.
 # ---------------------------------------------------------------------
-sub show($) {
+sub show #()
+{
     my $self = shift;
     $self->{ref}->show_all();
     # show some widgets which are in the lates array
@@ -2432,26 +3393,77 @@ sub show($) {
 
 
 # ---------------------------------------------------------------------
-# show window with all widgets anf start Gtk2->main
+#   Function: show_and_run
+#   Show toplevel window with all widgets and start Gtk2->main.
+#
+#   This is the default loop function.
+#
+#   Parameters:
+#   None.
+#
+#   Returns:
+#   None.
 # ---------------------------------------------------------------------
-sub show_and_run($) {
+sub show_and_run #()
+{
     my $self = shift;
     $self->show();
     Gtk2->main;
 }
 
 
+# *********************************************************************
+#   Widget: GtkMessageDialog
+#   A convenient message window
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_msg_dialog(   Name => <name>,                 <= widget name - must be unique
-#                   Modal => <0/1>,                 <= Optional. Default: modal (1)
-#                   DType => "<dialog_type>",       <= default: 'none'. Else 'ok', 'close', 'cancel', 'yes-no' or 'ok-cancel'
-#                   MTyp => "<message_type>",       <= 'info', 'warning', 'question', 'error' or 'other'
-#                   Icon => <path|stock|name>       <= Optional. Icon instead of message type icon
-#                   RFunc => <response_function>    <= Have to be set if nonmodal (Modal => 0) is chosen.
-#                                                      Gets the response 'ok', 'close', 'cancel', 'yes' or 'no'
-#)
+#   Function: add_msg_dialog
+#   Creates a new GtkMessageDialog object.
+#
+#   GtkMessageDialog presents a dialog with an image representing the type of message (Error, Question, etc.) alongside some message text.
+#
+#   Internal Name Type:
+#   MessageDialog
+#
+#   Parameters:
+#   Name            => <name>                   - Name of the message dialog. Must be unique.
+#   Modal           => <0/1>                    - Behaviour of the message dialog. Default: modal (1). Else nonmodal (0).
+#   DType           => <dialog_type>            - Type of the message dialog. Default: 'none'. Else 'ok', 'close', 'cancel', 'yes-no' or 'ok-cancel'.
+#   MTyp            => <message_type>           - Type of the message. Possible values: 'info', 'warning', 'question', 'error' or 'other'.
+#   [Icon           => <path|stock|name>]       - Optional. The used Icon beside of the main message. Can be an icon file path, a stock icon or an icon name.
+#   [RFunc          => <response_function>]     - Optional. Have to be set if nonmodal (Modal => 0) is chosen. Gets the response 'ok', 'close', 'cancel', 'yes' or 'no'.
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#   (start code)
+#   # a modal message dialog
+#   $win->add_msg_dialog(Name => 'diag1',
+#           DType   => 'ok-cancel',
+#           MType   => 'warning',
+#           Icon    => 'gtk-quit');
+#   --------------------------------------
+#   # a non modal message dialog
+#   $win->add_msg_dialog(Name => 'diag2',
+#           DType   => 'yes-no',
+#           MType   => 'info',
+#           RFunc   => \&nonModal,
+#           Modal   => 0);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/MessageDialog.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkMessageDialog.html>
+#
+#   Available Support Function:
+#   show_msg_dialog (<name>, "<message_text1>", "<message_text2>")          - A normal one.
+#
+#   show_msg_dialog (<dialog_type>, <message_type>, "<message_text>")       - A standalone or simple one.
 # ---------------------------------------------------------------------
-sub add_msg_dialog($@) {
+sub add_msg_dialog #(Name => <name>, Modal => <0/1>, DType => <dialog_type>, MTyp => <message_type>, [Icon => <path|stock|name>], [RFunc => <response_function>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -2472,13 +3484,62 @@ sub add_msg_dialog($@) {
     }
 }
 
+
 # ---------------------------------------------------------------------
-# show_msg_dialog(<name>, "<message_text1>", "<message_text2>")
-# or a simple one / as stand alone
-# show_msg_dialog(<dialog_type>, "<message_type>", "<message_text>")
-# returns the response ('ok', 'close', 'cancel', 'yes', 'no')
+#   Function: show_msg_dialog
+#   Shows a standalone, simple or normal message dialog.
+#
+#   The normal message dialog needs a message dialog object created with <add_msg_dialog>.
+#
+#   The standalone and the simple message dialog don't need this object.
+#
+#   Parameters for a normal:
+#   <name>                  - Name of the message dialog. Must be unique.
+#   <message_text1>         - The main message text.
+#   [<message_text2>]       - Optional. A second text
+#
+#   Parameters for a standalone or simple:
+#   <dialog_type>           - Type of the message dialog. Default: 'none'. Else 'ok', 'close', 'cancel', 'yes-no' or 'ok-cancel'.
+#   <message_type>          - Type of the message. Possible values: 'info', 'warning', 'question', 'error' or 'other'.
+#   <message_text>          - The main message text.
+#
+#   Returns:
+#   The response. Can be "ok", "close", "cancel", "yes", "no" depending on the dialog type.
+#
+#   Examples:
+#   (start code)
+#   # A standalone message dialog
+#   my $response = SimpleGtk2::show_msg_dialog('warning', 'yes-no', "This is a simple standalone");
+#   --------------------------------------
+#   # A simple one
+#   my $response = $win->show_msg_dialog('warning', 'yes-no', "This is a simple one");
+#   --------------------------------------
+#   # A normal non-modal message dialog
+#
+#   sub nonModal{
+#       my $response = shift;
+#       if ($response eq 'yes') {print "Yes\n";}
+#       else {print "No\n";}
+#   }
+#      
+#   my $FirstMsg = "<span foreground=\"blue\" size=\"x-large\">Message Type</span>";
+#   my $SecondMsg = "<span foreground='red' size=\"small\" style ='italic'>Info box.</span>";
+#   
+#   $win->add_button(Name => 'Button2',
+#           Pos     => [60, 60],
+#           Size    => [80, 40],
+#           Title   => "_NonModal");
+#   $win->add_signal_handler('Button2', 'clicked', sub{$win->show_msg_dialog('diag2', $FirstMsg, $SecondMsg);});
+#   
+#   $win->add_msg_dialog(Name => 'diag2',
+#           DType   => 'yes-no',
+#           MType   => 'info',
+#           RFunc   => \&nonModal,
+#           Modal   => 0);
+#   (end code)
 # ---------------------------------------------------------------------
-sub show_msg_dialog($@) {
+sub show_msg_dialog #(<name>, <message_text1>, <message_text2>, or <dialog_type>, <message_type>, <message_text>)
+{
     my $self = shift;
     my ($name, $msg1, $msg2);
     # is it standalone? 
@@ -2587,26 +3648,96 @@ sub show_msg_dialog($@) {
 
 
 ######################################################################
-# Display Widgets
+#   Group: Display Widgets
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkImage
+#   A widget displaying an image.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_image(    Name    => <name>,                      <= widget name - must be unique
-#               Image   => <image_object>
-#               Path    => <file_path>,
-#               Pixbuf  => <pix_buffer_object>
-#               Stock   => [<stock_name>,<stock_size>]  <= stock_size is per default 'dialog' because for scaling.
-#                                                           So, if stock_size is given, Size is optional
-#               Pos     => [pos_x, pos_y], 
-#               Size    => [width, height],             <= if widget is bigger/smaller it will be scaled
-#               Tip     => <tooltip-text>)              <= Optional
-#               Frame   => <frame_name>                 <= Name of the frame where widget is located. Must be unique
-#               Func    => <function_click>             <= Optional. Can be set later with add_signal_handler
-#               Sig     => <signal>                     <= Optional. Only in conjunction with Func
-#               Sens    => <sensitive>                  <= Optional. Default: 1
-#)
+#   Function: add_image
+#   Creates a new GtkImage widget.
+#
+#   The GtkImage widget displays an image.
+#   Various kinds of object can be displayed as an image; most typically, 
+#   you would load a GdkPixbuf ("pixel buffer") from a file, and then display that.
+#   Additionally it is possible to bind a left click action to the image. Also a tooltip is possible.
+#
+#   Internal Name Type:
+#   Image
+#   
+#   Parameters:
+#   Name                => <name>                           - Name of the image. Must be unique.
+#   Path                => <file_path>                      - Path of a picture to show.
+#   *OR*  
+#   Pixbuf|Pixbuffer    => <pix_buffer_object>              - Pixbuffer object (see <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Gdk/Pixbuf.pod.html> or 
+#                                                             <Gdk2 at https://developer.gnome.org/gdk-pixbuf/unstable//gdk-pixbuf-The-GdkPixbuf-Structure.html#GdkPixbuf>) of an image to show.
+#   *OR*  
+#   Stock               => [<stock_name>[,<stock_size>]]    - Stock icon to show. <stock_size> is per default 'dialog' because for scaling.
+#                                                             So, if <stock_size> is given, Size is optional.
+#   Size                => [width, height]                  - Width and height of the image. It will be scaled if bigger/smaller.
+#   Pos|Position        => [pos_x, pos_y]                   - Position of the image.
+#   [Frame              => <frame_name>]                    - Optional. Name of the frame if the image is located in one. Must be unique. See <add_frame>.
+#   [Tip|Tooltip        => <tooltip_text>]                  - Optional. Text of the tooltip shown while hovering over the image.
+#   [Func|Function      => <function_click>]                - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                                       *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal         => <signal>]                        - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                                       Most used is 'button_press_event'.
+#   [Sens|Sensitive     => <sensitive>]                     - Optional. Sets the image active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   # with pixbuf object
+#   my $pixbuf = Gtk2::Gdk::Pixbuf->new_from_file("./myimage.png");
+#   $win->add_image(Name => 'image2', 
+#           Pos     => [240, 100], 
+#           Size    => [50, 50], 
+#           Tip     => 'A second picture', 
+#           Frame   => 'frame1', 
+#           Pixbuf  => $pixbuf);
+#   $win->add_signal_handler('image2', 'button_press_event', \&Maximize);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Label.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkLabel.html>
+#
+#   Available Support Functions:
+#   image_reference = <get_image> (<name>, [<keyname>])
+#
+#   <set_image> (Name => <name>, Path => <file_path> *or* Pixbuffer => <pix_buffer_object> *or* Image => <image_object> *or* Stock => [<stock_name>, <stock_size>])
+#
+#   string = <get_value> (<name>, "Justify" *or* "Wrap|Wrapped")
+#
+#   <set_value> (<name>, Justify|Wrap|Wrapped => <new_value>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_image($@) {
+sub add_image #(Name => <name>, Path => <file_path>, or Pixbuffer => <pix_buffer_object>, or Stock => [<stock_name>[,<stock_size>]], Size => [width, height], Position => [pos_x, pos_y], [Frame => <frame_name>], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -2679,17 +3810,33 @@ sub add_image($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the image
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     
     $image->show();
 }
 
 
 # ---------------------------------------------------------------------
-# get image - as pixbuff or image object
-# get_image(<name> [, <keyname>])
+#   Function: get_image
+#   Returns the image reference, the pixbuffer or the path.
+#   If no key is given the current Gtk2::Image reference will be returned. Else an object or path depending to the key.
+#
+#   Parameters:
+#   <name>      - Name of the image. Must be unique.
+#   <keyname>   - Optional. Possible keynames are: 'Path', 'Image' or 'Pixbuf|Pixbuffer'.
+#
+#   Returns:
+#   The image reference, the pixbuffer or the path. 
+#
+#   Examples:
+#>  # get the pixbuffer
+#>  my $pixbuff = $win->get_image('Image1', 'Pixbuf');
+#>  --------------------------------------
+#>  # get path of the picture
+#>  my $file_path = $win->get_image('Image1', 'Image');
 # ---------------------------------------------------------------------
-sub get_image($@) {
+sub get_image #(<name>, [<keyname>])
+{
     my $self = shift;
     my $name = shift;
     my $key = _extend(lc(shift)) || undef;
@@ -2719,15 +3866,29 @@ sub get_image($@) {
 
 
 # ---------------------------------------------------------------------
-# set_image(Name    => <name>,                      <= widget name - must be unique
-#           Path    => <file_path>,
-#           Pixbuf  => <pix_buffer_object>
-#           Image   => <image_object>
-#           Stock   => [<stock_name>,<stock_size>]  <= stock_size is per default 'dialog' because for scaling.
-#                                                           So, if stock_size is given, Size is optional
-#)
+#   Function: set_image
+#   Sets a new image, stock icon, pixbuffer or file path.
+#
+#   Parameters:
+#   Name                => <name>                       - Name of the image. Must be unique.
+#   Path                => <image_path>                 - Path of the new image.
+#   *OR*
+#   Pixbuf|Pixbuffer    => <pix_buffer_object>          - A Gtk2::Gdk::Pixbuf object of a new image.
+#   *OR*
+#   Image               => <image_object>               - A Gtk2::Image object of a new image.
+#   *OR*
+#   Stock               => [<stock_name>,<stock_size>]  - A Gtk2::Stock icon as a new image. <stock_size> is per default 'dialog' because for scaling.
+#                                                         *Note:* If <stock_size> is given, width and height of the image will be changed.
+#
+#   Returns:
+#   None. 
+#
+#   Example:
+#>  # set a new image by path
+#>  $win->set_image('Image1', Path => '/usr/share/icons/gnome/256x256/actions/appointment-new');
 # ---------------------------------------------------------------------
-sub set_image($@) {
+sub set_image #(Name => <name>, Path => <file_path>, or Pixbuffer => <pix_buffer_object>, or Image => <image_object>, or Stock => [<stock_name>, <stock_size>])
+{
     my $self = shift;
     my $name = shift;
     my %params = $self->_normalize(@_);
@@ -2798,22 +3959,73 @@ sub set_image($@) {
 }
 
 
+# *********************************************************************
+#   Widget: GtkLabel
+#   A widget that displays a small to medium amount of text.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# add_label (   Name    => <name>,                  <= name of the label. Must be unique
-#               Title   => <title>,
-#               Font    => [family, size, weight]   <= Optional. Sets a label font. to use the defaults set values with undef
-#               Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Pos     => [pos_x, pos_y], 
-#               Widget  => <name_of_linked_widget>  <= Optional in conjunction with underlined
-#               Justify => <justify>                <= Optional: left, right, center, fill
-#               Wrap    => 0/1                      <= Optional. Only usable in a frame
-#               Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#               Sens    => <sensitive>              <= Optional. Default: 1
-#               Tip     => <tooltip-text>)          <= Optional
-#)
+#   Function: add_label
+#   Creates a new GtkLabel widget.
+#
+#   The GtkLabel widget displays a small amount of text. As the name implies, most labels are used to label another widget such as a GtkButton or a GtkMenuItem.
+#
+#   Internal Name Type:
+#   Label
+#   
+#   Parameters:
+#   Name            => <name>                       - Name of the label. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]               - Position of the label.
+#   Title           => <title>                      - Text of the label.
+#   [Frame          => <frame_name>]                - Optional. Name of the frame if the label is located in one. Must be unique. See <add_frame>.
+#   [Font           => [family, size, weight]]      - Optional. Sets the initial font. Font family and size are required if set.
+#   [Widget         => <name_of_linked_widget>]     - Optional. Links the text with a widget - in conjunction with underlined.
+#   [Justify        => <justify>]                   - Optional. Justification of the text. Possible values: left, right, center, fill
+#   [Wrap|Wrapped   => <0/1>]                       - Optional. Wraps the text. Only usable in a frame.
+#   [Tip|Tooltip    => <tooltip_text>]              - Optional. Text of the tooltip shown while hovering over the label.
+#   [Sens|Sensitive => <sensitive>]                 - Optional. Sets the label active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_label(Name => 'label1', 
+#           Pos     => [10, 20], 
+#           Title   => "A Label.\n"."A new line", 
+#           Justify => 'left');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Label.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkLabel.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "Justify" *or* "Wrap|Wrapped")
+#
+#   <set_value> (<name>, Justify|Wrap|Wrapped => <new_value>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_label($@) {
+sub add_label #(Name => <name>, Position => [pos_x, pos_y], Title => <title>, [Frame => <frame_name>], [Font => [family, size, weight]], [Widget => <name_of_linked_widget>], [Justify => <justify>], [Wrapped => <0/1>], [Tooltip => <tooltip_text>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -2839,7 +4051,7 @@ sub add_label($@) {
 
     if ($self->is_underlined($object->{title})) {
         $label = Gtk2::Label->new_with_mnemonic(_($object->{title}));
-        my $obj_ref = $self->get_widget($object->{widget});
+        my $obj_ref = $self->_get_ref($object->{widget});
         $label->set_mnemonic_widget($obj_ref);
     } else {
         $label = Gtk2::Label->new(_($object->{title}));
@@ -2864,7 +4076,7 @@ sub add_label($@) {
     $self->set_font_color($object->{name}, $color, $cstate) if defined($color);
 
     # position the label
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     
     $label->show();
 }
@@ -2879,7 +4091,7 @@ sub add_label($@) {
 #                   orient => <orientation>,            <= 
 #                   Timer => <update_time>              <= in ms
 #                   Align => <align>                    <= Optional (left, right)
-#                   Tip => <tooltip-text>)              <= Optional
+#                   Tip => <tooltip_text>)              <= Optional
 #)
 # ---------------------------------------------------------------------
 
@@ -2893,16 +4105,72 @@ sub add_label($@) {
 
 # ---------------------------------------------------------------------
 
+# *********************************************************************
+#   Widget: GtkStatusbar
+#   Report messages of minor importance to the user.
+# *********************************************************************
 
 # ---------------------------------------------------------------------
-# add_statusbar(Name => <name>,                 <= widget name - must be unique
-#               Pos => [pos_x, pos_y], 
-#               Size => [width, height],        <= Optional. Default is complete window width
-#               Timeout => <show_time>,         <= Optional. Default: 0
-#               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
-#               Sens => <sensitive>             <= Optional. Default: 1
+#   Function: add_statusbar
+#   Creates a new GtkStatusbar widget.
+#
+#   A GtkStatusbar is usually placed along the bottom of an application's main GtkWindow.
+#
+#   It may provide a regular commentary of the application's status, or may be used to simply output a message when the status changes.
+#
+#   Internal Name Type:
+#   Statusbar
+#   
+#   Parameters:
+#   Name            => <name>                       - Name of the status bar. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]               - Position of the status bar.
+#   [Size           => [width, height]]             - Optional. Size of the status bar. Default is the complete window width.
+#   [Frame          => <frame_name>]                - Optional. Name of the frame if the status bar is located in one. Must be unique. See <add_frame>.
+#   [Timeout        => <show_time>]                 - Optional. The time in milliseconds the message will be shown. Default is 1 (no timeout).
+#   [Sens|Sensitive => <sensitive>]                 - Optional. Sets the status bar active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_statusbar(Name => 'sbar1',
+#           Pos     => [0, 0],
+#           Timeout => 2000);
+#   (end code)
+#
+#   Note:
+#   The main window supports a statusbar at the bottom, too. See <new_window> for more details.
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Statusbar.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkStatusbar.html>
+#
+#   Available Support Functions:
+#   <set_sb_text> ([<name>], <text>)
+#
+#   <remove_sb_text> ([<name>], [<text>|<msg-id>])
+#
+#   <clear_sb_stack> (<name>)
+#
+#   string = <get_value> (<name>, "message" *or* "msgid" *or* "stackref" *or* "stackcount")
+#
+#   <set_value> (<name>, message|msgid|stackref|stackcount => <new_value>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
 # ---------------------------------------------------------------------
-sub add_statusbar($@) {
+sub add_statusbar #(Name => <name>, Position => [pos_x, pos_y], [Size => [width, height]], [Frame => <frame_name>], [Timeout => <show_time>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -2912,7 +4180,7 @@ sub add_statusbar($@) {
     # statusbar specific fields
     $object->{sbar_stack} = [];
     $object->{sbar_last_msg_id} = undef;
-    $object->{sbar_timeout} = defined($params{'timeout'}) ? $params{'timeout'} : 0;
+    $object->{sbar_timeout} = defined($params{'timeout'}) ? $params{'timeout'} > 1 ? $params{'timeout'} : 0 : undef;
     my $sensitive = defined($params{'sensitive'}) ? $params{'sensitive'} : undef;
 
     # add widget object to window objects list
@@ -2959,7 +4227,7 @@ sub add_statusbar($@) {
     $self->{objects}->{$object->{name}} = $object;
 
     # position the statusbar
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     # get size
     my $req = $vbox->size_request();
@@ -2974,11 +4242,21 @@ sub add_statusbar($@) {
 
 
 # ---------------------------------------------------------------------
-# set_sb_text(<name>, <text>)
-# <name> is optional. If not set the main window statusbar will use, if available
-# Return value is the message id
+#   Function: set_sb_text
+#   Sets/display a new status bar message.
+#
+#   Parameters:
+#   <name>          - Optional. Name of the status bar. Must be unique. If not set the main window status bar will be used.
+#   <text>          - New text message for the status bar.
+#
+#   Returns:
+#   Message id.
+#
+#   Example:
+#>  $win->set_sb_text('sbar1', $text);
 # ---------------------------------------------------------------------
-sub set_sb_text($@) {
+sub set_sb_text #([<name>], <text>)
+{
     my $self = shift;
     my ($name, $text) = @_;
     
@@ -2993,7 +4271,7 @@ sub set_sb_text($@) {
     # show message
     my $msg_id = $object->{statusbar}->push($object->{contextid}, $text);
     push(@{$object->{sbar_stack}}, {$msg_id => $text});
-    unless ($object->{sbar_timeout} == 0) {
+    unless ($object->{sbar_timeout} <= 1) {
         Glib::Timeout->add($object->{sbar_timeout},
             sub{
                 $self->remove_sb_text($name, $msg_id);
@@ -3002,12 +4280,23 @@ sub set_sb_text($@) {
     return $msg_id;
 }
 
+
 # ---------------------------------------------------------------------
-# remove_sb_text(<name>, <text>|<msg-id>)
-# <name> is optional. If not set the main window statusbar will use, if available
-# <text> is optional. If not set the last message will remove
+#   Function: remove_sb_text
+#   Removes a message from the status bar.
+#
+#   Parameters:
+#   <name>              - Optional. Name of the status bar. Must be unique. If not set the main window status bar will be used.
+#   <text|msg-id>       - Optional. The id or its' text message. If not set the last message will be removed.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->remove_sb_text('sbar1', $msg_id[3]);
 # ---------------------------------------------------------------------
-sub remove_sb_text($@) {
+sub remove_sb_text #([<name>], [<text>|<msg-id>])
+{
     my $self = shift;
     my ($name, $text_or_id) = @_;
     
@@ -3058,11 +4347,22 @@ sub remove_sb_text($@) {
     }
 }
 
+
 # ---------------------------------------------------------------------
-# clear_sb_stack(<name>)
-# <name> is optional. If not set the main window statusbar will use, if available
+#   Function: clear_sb_stack
+#   Clears the message stack of a status bar.
+#
+#   Parameters:
+#   <name>              - Name of the status bar. Must be unique. If not set the main window status bar will be used.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->clear_sb_stack();
 # ---------------------------------------------------------------------
-sub clear_sb_stack($@) {
+sub clear_sb_stack #(<name>)
+{
     my $self = shift;
     my $name = @_;
     
@@ -3084,25 +4384,83 @@ sub clear_sb_stack($@) {
 
 
 ######################################################################
-# Buttons and Toggles
+#   Group: Buttons and Toggles
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkButton
+#   A widget that creates a signal when clicked on.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_button(   Name   => <name>,                  <= Name of the button. Must be unique
-#               Pos    => [pos_x, pos_y], 
-#               Title  => <title>,
-#               Font   => [family, size, weight]   <= Optional. Sets a title font. to use the defaults set values with undef
-#               Color  => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                               State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Size   => [width, height],         <= Optional
-#               Tip    => <tooltip-text>)          <= Optional
-#               Frame  => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#               Func   => <function_click>         <= Optional. Can be set later with add_signal_handler
-#               Sig    => <signal>                 <= Optional. Only in conjunction with Func
-#               Sens   => <sensitive>              <= Optional. Default: 1
-#)
+#   Function: add_button
+#   Creates a new GtkButton widget.
+#
+#   The GtkButton widget is generally used to attach a function to that is called when the button is pressed.
+#
+#   Internal Name Type:
+#   Button
+#
+#   Parameters:
+#   Name            => <name>                   - Name of the button. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]           - Position of the button.
+#   Title           => <title>                  - Title of the button (displayed in the button).
+#   [Frame          => <frame_name>]            - Optional. Name of the frame if the button is located in one. Must be unique. See <add_frame>.
+#   [Font           => [family, size, weight]]  - Optional. Sets a title font. To use the defaults set values with undef.
+#   [Color          => [<color>, <state>]]      - Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                           State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (see Gtk2::State).
+#   [Size           => [width, height]]         - Optional. Width and height of the button. Default is 80x25.
+#   [Tip|Tooltip    => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the button.
+#   [Func|Function  => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                           *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                           Can be 'activate', 'clicked', 'enter', 'leave' or 'pressed'.
+#   [Sens|Sensitive => <sensitive>]             - Optional. Sets the button active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_button(Name => 'closeButton', 
+#           Pos    => [10, 45], 
+#           Title  => "_Close", 
+#           Tip    => 'Closes the Application', 
+#           Frame  => 'frame2');
+#   $win->add_signal_handler('closeButton', 'clicked', sub{Gtk2->main_quit;});
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Button.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkButton.html>
+#
+#   Available Support Functions:
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_button($@) {
+sub add_button #(Name => <name>, Position => [pos_x, pos_y], Title => <title>, [Frame => <frame_name>], [Font => [family, size, weight]], [Color => [<color>, <state>]], [Size => [width, height]], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3143,28 +4501,97 @@ sub add_button($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the button
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $button->show();
 }
 
 
+# *********************************************************************
+#   Widget: GtkCheckButton
+#   A widget that creates a discrete toggle button with label.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# add_check_button( Name => <name>,                 <= Name of the button. Must be unique
-#                   Pos => [pos_x, pos_y], 
-#                   Title => <title>,
-#                   Font => [family, size, weight]  <= Optional. Sets a button font. to use the defaults set values with undef
-#                   Color  => [<color>, <state>]    <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#                   Active => 0/1                   <= Should be active? Default: 0 (not active)
-#                   Tip => <tooltip-text>)          <= Optional
-#                   Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
-#                   Func => <function_click>        <= Optional. Can be set later with add_signal_handler
-#                   Sig => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens => <sensitive>             <= Optional. Default: 1
-#                   )
+#   Function: add_check_button
+#   Creates a new GtkCheckButton widget.
+#
+#   A GtkCheckButton places a discrete toggle button next to a label.
+#
+#   Internal Name Type:
+#   CheckButton
+#
+#   Parameters:
+#   Name            => <name>                   - Name of the button. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]           - Position of the button.
+#   Title           => <title>                  - Title of the button (displayed in the button).
+#   [Frame          => <frame_name>]            - Optional. Name of the frame if the button is located in one. Must be unique. See <add_frame>.
+#   [Active         => <0/1>]                   - Optional. Sets the active state. Default: 0 (not active)
+#   [Font           => [family, size, weight]]  - Optional. Sets a title font. To use the defaults set values with undef.
+#   [Color          => [<color>, <state>]]      - Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                           State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (see Gtk2::State).
+#   [Tip|Tooltip    => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the button.
+#   [Func|Function  => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                           *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                           Can be 'activate', 'clicked', 'enter', 'leave' or 'pressed'.
+#   [Sens|Sensitive => <sensitive>]             - Optional. Sets the button active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#   (start code)
+#   $win->add_check_button( Name => 'checkEnabled' . $name_number, 
+#           Pos     => [170, 10], 
+#           Title   => 'Enabled', 
+#           Tip     => "Enables or disables this output.", 
+#           Active  => $enabled, 
+#           Frame   => "NB_page" . $nr);
+#   $win->add_signal_handler('checkEnabled' . $name_number, 'toggled', \&on_checkbox_enabled_toggled, $name);
+#   --------------------------------------
+#   $win->add_check_button(Name => 'checkButton1', 
+#           Pos     => [80, 20], 
+#           Title   => 'Check button', 
+#           Tip     => 'This is a checkbox', 
+#           Sig     => 'toggled', 
+#           Func    => [\&DeleteFile, 'bla.txt']);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/CheckButton.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkCheckButton.html>
+#
+#   Available Support Functions:
+#   state = <get_value> (<name>, "active")
+#
+#   <set_value> (<name>, Active => <0/1>)
+#
+#   state = <is_active> (<name>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_check_button($@) {
+sub add_check_button #(Name => <name>, Position => [pos_x, pos_y], Title => <title>, [Frame => <frame_name>], [Active => <0/1>], [Font => [family, size, weight]], [Color => [<color>, <state>]], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3177,7 +4604,7 @@ sub add_check_button($@) {
     my $check_button = $self->_create_check_widget($object->{name}, %params);
 
     # position the button
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     
     $check_button->show();
 }
@@ -3243,23 +4670,93 @@ sub _create_check_widget($@) {
     return $check_widget;
 }
 
+
+# *********************************************************************
+#   Widget: GtkRadioButton
+#   A choice from multiple check buttons.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# add_radio_button( Name    => <name>,                  <= Name of the button. Must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Title   => <title>,
-#                   Font    => [family, size, weight]   <= Optional. Sets a button font. to use the defaults set values with undef
-#                   Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#                   Group   => <button_group>,          <= Name of the buttongroup. Must be unique
-#                   Active  => 0/1                      <= Which is the active button. Default: 0 (not active)
-#                   Tip     => <tooltip-text>)          <= Optional
-#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>         <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>              <= Optional. Default: 1
-#)
+#   Function: add_radio_button
+#   Creates a new GtkRadioButton widget.
+#
+#   A single radio button performs the same basic function as a GtkCheckButton, as its position in the object hierarchy reflects. 
+#   It is only when multiple radio buttons are grouped together that they become a different user interface component in their own right.
+#
+#   Every radio button is a member of some group of radio buttons. When one is selected, all other radio buttons in the same group are deselected.
+#
+#   Internal Name Type:
+#   RadioButton
+#
+#   Parameters:
+#   Name            => <name>                   - Name of the button. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]           - Position of the button.
+#   Title           => <title>                  - Title of the button (displayed in the button).
+#   Group           => <button_group>,          - Name of the buttongroup. Must be unique.
+#   [Frame          => <frame_name>]            - Optional. Name of the frame if the button is located in one. Must be unique. See <add_frame>.
+#   [Active         => <0/1>]                   - Optional. Sets the active state. Default: 0 (not active)
+#   [Font           => [family, size, weight]]  - Optional. Sets a title font. To use the defaults set values with undef.
+#   [Color          => [<color>, <state>]]      - Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                           State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (see Gtk2::State).
+#   [Tip|Tooltip    => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the button.
+#   [Func|Function  => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                           *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                           Can be 'activate', 'clicked', 'enter', 'leave' or 'pressed'.
+#   [Sens|Sensitive => <sensitive>]             - Optional. Sets the button active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   # Group of 3 Radio Buttons
+#   $win->add_radio_button(Name => 'radio1', Pos => [10, 90], 
+#           Title   => "First", Group => "radio1", 
+#           Active  => 1, Tip => "1st radio button", 
+#           Frame   => 'frame1');
+#   $win->add_radio_button(Name => 'radio2', Pos => [10, 110], 
+#           Title   => "_Second", Group => "radio1", 
+#           Tip     => "2nd radio button", Frame => 'frame1');
+#   $win->add_radio_button(Name => 'radio3', Pos => [10, 130], 
+#           Title   => "Third", Group => "radio1", 
+#           Tip     => "3rd radio button", Frame => 'frame1');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/RadioButton.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkRadioButton.html>
+#
+#   Available Support Functions:
+#   value = <get_value> (<name>, "active" *or* "Group" *or* "Groupname|Gname")
+#
+#   <set_value> (<name>, Active => <0/1>)
+#
+#   state = <is_active> (<name>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_radio_button($@) {
+sub add_radio_button #(Name => <name>, Position => [pos_x, pos_y], Title => <title>, Group => <button_group>, [Frame => <frame_name>], [Active => <0/1>], [Font => [family, size, weight]], [Color => [<color>, <state>]], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3272,7 +4769,7 @@ sub add_radio_button($@) {
     my $radio_button = $self->_create_radio_widget($object->{name}, %params);
     
     # position the radio button
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     
     $radio_button->show();
 }
@@ -3301,7 +4798,7 @@ sub _create_radio_widget($@) {
     my $group = [];
     my $last = undef;
     if (exists($self->{groups}->{$object->{group}})) {
-        $last = $self->get_widget($self->{groups}->{$object->{group}}[-1]);
+        $last = $self->_get_ref($self->{groups}->{$object->{group}}[-1]);
         #$group = $last->get_group();
     } else {
         $self->{groups}->{$object->{group}} = [];
@@ -3349,59 +4846,80 @@ sub _create_radio_widget($@) {
 }
 
 
+# *********************************************************************
+#   Widget: GtkLinkButton
+#   A button bound to an URL.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# get group or group name from radio button/menu
-# get_group(<name>, ["Name"])
+#   Function: add_link_button
+#   Creates a new GtkLinkButton widget.
+#
+#   A GtkLinkButton is a GtkButton with a hyperlink, similar to the one used by web browsers, which triggers an action when clicked. It is useful to show quick links to resources. 
+#
+#   Internal Name Type:
+#   LinkButton
+#
+#   Parameters:
+#   Name            => <name>                   - Name of the button. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]           - Position of the button.
+#   Title           => <title>                  - Title of the button (displayed in the button).
+#   Uri             => <uri-text>               - A valid URI. It is the tooltip as well and will be shown while hovering over the widget.
+#   [Frame          => <frame_name>]            - Optional. Name of the frame if the button is located in one. Must be unique. See <add_frame>.
+#   [Font           => [family, size, weight]]  - Optional. Sets a title font. To use the defaults set values with undef.
+#   [Color          => [<color>, <state>]]      - Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                           State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (see Gtk2::State).
+#   [Size           => [width, height]]         - Optional. Width and height of the button. Default is 80x25.
+#   [Func|Function  => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                           *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                           Can be 'activate', 'clicked', 'enter', 'leave' or 'pressed'.
+#   [Sens|Sensitive => <sensitive>]             - Optional. Sets the button active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_link_button(Name => 'linkButton', 
+#           Pos     => [10, 45], 
+#           Title   => "To SimpleGtk2 site", 
+#           Uri     => 'https://github.com/ThomasFunk/SimpleGtk2', 
+#           Frame   => 'frame2');
+#   $win->add_signal_handler('linkButton', 'clicked', 
+#                           [\&openPage, $win->get_value('linkButton', 'Uri')]);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/LinkButton.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkLinkButton.html>
+#
+#   Available Support Functions:
+#   state = <get_value> (<name>, "Uri")
+#
+#   <set_value> (<name>, Uri => <uri-text>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
 # ---------------------------------------------------------------------
-sub get_group($@) {
-    my $self = shift;
-    my ($name, $type) = @_;
-    
-    my $object = $self->get_object($name);
-    
-    if ($object->{type} =~ /^Radio/) {
-        unless (defined($type)) {
-            # get radio button/menu group object
-            return $object->{ref}->get_group();
-        } else {
-            # get radio button/menu group name
-            return $object->{group};
-        }
-    } else {
-        $self->internal_die($object, "Can't get group - wrong type \"$object->{type}\"!");
-    }
-}
-
-
-# ---------------------------------------------------------------------
-# set_group(<name>, <group/group_name>)
-# Sets a new group on the radio button _<name>_. 
-# It can be used an existing group object or group name.
-# ---------------------------------------------------------------------
-# TODO: how to set group? a single widget, all of an old group or what?
-sub set_group($@) {
-    my $self = shift;
-    my $hme = @_;
-    print "set_group not implemented yet.\n";
-}
-
-
-# ---------------------------------------------------------------------
-# add_link_button(  Name    => <name>,                  <= Name of the button. Must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Title   => <title>,
-#                   Font    => [family, size, weight]   <= Optional. Sets a title font. to use the defaults set values with undef
-#                   Color  => [<color>, <state>]        <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#                   Size    => [width, height],         <= Optional
-#                   Uri     => <Uri-text>)              <= A valid URI. It is the tooltip as well.
-#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>         <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>              <= Optional. Default: 1
-#)
-# ---------------------------------------------------------------------
-sub add_link_button($@) {
+sub add_link_button #(Name => <name>, Position => [pos_x, pos_y], Title => <title>, Uri => <uri-text>, [Frame => <frame_name>], [Font => [family, size, weight]], [Color => [<color>, <state>]], [Size => [width, height]], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3425,7 +4943,7 @@ sub add_link_button($@) {
     }
 
     # set relief to none
-    $link_button->set_relief ('none');
+    $link_button->set_relief('none');
     
     # add widget reference to widget object
     $object->{ref} = $link_button;
@@ -3440,31 +4958,90 @@ sub add_link_button($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the button
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $link_button->show();
 }
 
 
 ######################################################################
-# Numeric/Text Data Entry
+#   Group: Numeric/Text Data Entry
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkEntry
+#   A single line text entry field.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# add_entry (   Name => <name>,                 <= object name - must be unique
-#               Title => <title>,
-#               Font => [family, size, weight]  <= Optional. Sets a text entry font. to use the defaults set values with undef
-#               Pos => [pos_x, pos_y], 
-#               Size => [width, height],
-#               Align => <xalign>               <= Optional: left (default), right
-#               Tip => <tooltip-text>)          <= Optional
-#               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
-#               Func => <function_click>        <= Optional. Can be set later with add_signal_handler
-#               Sig => <signal>                 <= Optional. Only in conjunction with Func
-#               Sens => <sensitive>             <= Optional. Default: 1
-#               )
+#   Function: add_entry
+#   Creates a new GtkEntry widget.
+#
+#   The GtkEntry widget is a single line text entry widget. 
+#   A fairly large set of key bindings are supported by default. 
+#   If the entered text is longer than the allocation of the widget, 
+#   the widget will scroll so that the cursor position is visible.
+#
+#   Internal Name Type:
+#   Entry
+#   
+#   Parameters:
+#   Name            => <name>                       - Name of the entry. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]               - Position of the entry.
+#   Size            => [width, height]              - Width and height of the entry.
+#   [Title          => <title>]                     - Optional. Text in the entry field.
+#   [Frame          => <frame_name>]                - Optional. Name of the frame if the entry is located in one. Must be unique. See <add_frame>.
+#   [Font           => [family, size, weight]]      - Optional. Sets the initial font. Font family and size are required if set.
+#   [Align          => <xalign>]                    - Optional: Sets the alignment for the contents of the entry. Default: left or right.
+#   [Tip|Tooltip    => <tooltip_text>]              - Optional. Text of the tooltip shown while hovering over the entry.
+#   [Func|Function  => <function_click>]            - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                               *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                    - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                               Most used are 'activate', 'changed'. For more see References below.
+#   [Sens|Sensitive => <sensitive>]                 - Optional. Sets the entry active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_entry(Name => 'entry1', 
+#           Pos     => [200, 20], 
+#           Size    => [100, 20], 
+#           Title   => 'A text entry field', 
+#           Align   => 'right');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Entry.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkEntry.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "Align")
+#
+#   <set_value> (<name>, Align => "<xalign>")
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_entry($@) {
+sub add_entry #(Name => <name>, Position => [pos_x, pos_y], Size => [width, height], [Title => <title>], [Frame => <frame_name>], [Font => [family, size, weight]], [Align => <xalign>], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3499,65 +5076,196 @@ sub add_entry($@) {
     if ($align eq 'right') {$entry->set_alignment(1);}
     
     # position the entry
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     
     $entry->show();
 }
 
 
+# *********************************************************************
+#   Widget: GtkSlider
+#   A horizontal or vertical slider widget for selecting a value from a range.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_slider(   Name        => <name>,              <= widget name - must be unique
-#               Pos         => [pos_x, pos_y], 
-#               Size        => [width, height],     <= Optional
-#               Orient      => <orientation>        <= orientation of the slider (horizontal, vertical)
-#               Start       => <start_value>,       <= Optional. Default: 0.0
-#               Min         => <min_value>,         <= Double
-#               Max         => <max_value>,         <= Double
-#               Step        => <step_in/decrease>   <= Double
-#               DrawValue   => <1/0>                <= Optional. Default: 1
-#               ValuePos    => <value_position>     <= Optional. Default: top (left, right, bottom)
-#               Digits      => <digits>             <= Optional. Default: 0 (1 digit)
-#               Tip         => <tooltip-text>)      <= Optional
-#               Frame       => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#               Func        => <function_click>     <= Optional. Can be set later with add_signal_handler
-#               Sig         => <signal>             <= Optional. Only in conjunction with Func
-#               Sens        => <sensitive>          <= Optional. Default: 1
-#)
+#   Function: add_slider
+#   Creates a new GtkSlider widget.
+#
+#   The GtkSlider (GtkHScale/GtkVScale) widget is used to allow the user to select a value using a horizontal or vertical slider.
+#   The position to show the current value and/or the number of decimal places can be shown, too.
+#
+#   Internal Name Type:
+#   Slider
+#   
+#   Parameters:
+#   Name                => <name>                   - Name of the slider. Must be unique.
+#   Pos|Position        => [pos_x, pos_y]           - Position of the slider.
+#   Orient|Orientation  => <orientation>            - The orientation of the slider (horizontal, vertical).
+#   [Size               => [width, height]]         - Optional. Width and height of the slider.
+#   [Start              => <start_value>]           - Optional. The initial start value. Default: 0.0 (double).
+#   Min                 => <min_value>              - The minimum allowed value (double).
+#   Max                 => <max_value>              - The maximum allowed value (double).
+#   Step                => <step_in/decrease>       - The step increment (double).
+#   [DrawValue          => <1/0>]                   - Optional. Specifies whether the current value is displayed as a string next to the slider.
+#   [ValuePos           => <value_position>]        - Optional: Sets the position in which the current value is displayed. Default: top. Others: left, right, bottom.
+#   [Digits             => <used_digits>]           - Optional. Number of decimal places the value will be displayed. Default: 0 (1 digit).
+#   [Frame              => <frame_name>]            - Optional. Name of the frame if the slider is located in one. Must be unique. See <add_frame>.
+#   [Tip|Tooltip        => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the slider.
+#   [Func|Function      => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                               *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal         => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                               Most used signal is 'value-changed'. For more see References below.
+#   [Sens|Sensitive     => <sensitive>]             - Optional. Sets the slider active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_slider(Name => 'hslider', 
+#           Pos     => [10, 220], 
+#           Size    => [200, -1], 
+#           Orient  => 'horizontal', 
+#           Start   => 5, 
+#           Min     => 0, 
+#           Max     => 100, 
+#           Step    => 0.1, 
+#           Digits  => 1, 
+#           Tip     => 'Round and round we go', 
+#           Frame   => 'frame2');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl HScale at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/HScale.pod.html>, 
+#   <Gtk2-Perl VScale at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/VScale.pod.html>, 
+#   <Gtk2 HScale at https://developer.gnome.org/gtk2/stable//GtkHScale.html>, 
+#   <Gtk2 VScale at https://developer.gnome.org/gtk2/stable//GtkVScale.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "Active" *or* "Min|Minimum" *or* "Max|Maximum" *or* "Step" *or* "DrawValue" *or* "ValuePos|ValuePosition" *or* "Digits")
+#
+#   <set_value> (<name>, Start => <start_value> *or* Active => <active_value> *or* 
+#                        Min => <min_value> *or* Max => <max_value> *or* 
+#                        Step => <step_in/decrease> *or* DrawValue => <1/0> *or* 
+#                        ValuePos|ValuePosition => "<value_position>" *or* Digits => <used_digits>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-# TODO: If a draw value is active the slider is moved to another position.
-#       Have to be fixed ?
-# ---------------------------------------------------------------------
-sub add_slider($@) {
+sub add_slider #(Name => <name>, Position => [pos_x, pos_y], Orientation => <orientation>, [Size => [width, height]], [Start => <start_value>], Minimum => <min_value>, Maximum => <max_value>, Step => <step_in/decrease>, [DrawValue => <1/0>], [ValuePosition => <value_position>], [Digits => <used_digits>], [Frame => <frame_name>], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
     $object->{type} = 'Slider';
 
     $self->_create_range_widget($object, %params);
+# ---------------------------------------------------------------------
+# TODO: If a draw value is active the slider is moved to another position.
+#       Have to be fixed ?
+# ---------------------------------------------------------------------
 }
 
 
+# *********************************************************************
+#   Widget: GtkSpinButton
+#   Retrieve an integer or floating-point number from the user.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_spin_button(  Name    => <name>,              <= widget name - must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Size    => [width, height],     <= Optional
-#                   Start   => <start_value>,       <= Optional. Default: 0.0
-#                   Min     => <min_value>,         <= Double
-#                   Max     => <max_value>,         <= Double
-#                   Step    => <step_in/decrease>   <= Double
-#                   Page    => <page_in/decrease>   <= Double
-#                   Snap    => <snap_to_tick>       <= Optional
-#                   Align   => <align>              <= Optional (left, right)
-#                   Rate    => <from 0.0 to 1.0>    <= Optional. Default: 0.0
-#                   Digits  => <used_digits>        <= Optional. Default: 0 (1 digit)
-#                   Tip     => <tooltip-text>       <= Optional
-#                   Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>     <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>             <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>          <= Optional. Default: 1
-#)
+#   Function: add_spin_button
+#   Creates a new GtkSpinButton widget.
+#
+#   A GtkSpinButton is an ideal way to allow the user to set the value of some attributes.
+#
+#   Rather than having to directly type a number into a GtkEntry, GtkSpinButton allows the 
+#   user to click on one of two arrows to increment or decrement the displayed value. 
+#
+#   A value can still be typed in, with the bonus that it can be checked to ensure it is in a given range.
+#
+#   Internal Name Type:
+#   SpinButton
+#   
+#   Parameters:
+#   Name            => <name>                   - Name of the spin button. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]           - Position of the spin button.
+#   [Size           => [width, height]]         - Optional. Width and height of the spin button.
+#   [Start          => <start_value>]           - Optional. The initial start value. Default: 0.0 (double).
+#   Min             => <min_value>              - The minimum allowed value (double).
+#   Max             => <max_value>              - The maximum allowed value (double).
+#   Step            => <step_in/decrease>       - The step increment (double).
+#   Page            => <page_in/decrease>       - The page increment (double).
+#   [Snap           => <snap_to_tick>]          - Optional. Sets the policy as to whether values are corrected to the nearest step increment when an invalid value is provided.
+#   [Align          => <xalign>]                - Optional: Sets the alignment for the contents of the spin button. Default: left or right.
+#   [Rate           => <from 0.0 to 1.0>]       - Optional. Sets the amount of acceleration that the spin button has (0.0 to 1.0). Default: 0.0
+#   [Digits         => <used_digits>]           - Optional. Number of decimal places the value will be displayed. Default: 0 (1 digit).
+#   [Frame          => <frame_name>]            - Optional. Name of the frame if the spin button is located in one. Must be unique. See <add_frame>.
+#   [Tip|Tooltip    => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the spin button.
+#   [Func|Function  => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                           *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                           Most used signal is 'value-changed'. For more see References below.
+#   [Sens|Sensitive => <sensitive>]             - Optional. Sets the spin button active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_spin_button(Name => 'spin1', 
+#           Pos     => [10, 60], 
+#           Start   => 5, 
+#           Min     => 0, 
+#           Max     => 10, 
+#           Step    => 1, 
+#           Tip     => 'Thats a spin button', 
+#           Align   => 'right', 
+#           Frame   => 'frame1');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/SpinButton.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkSpinButton.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "Active" *or* "Align" *or* "Min|Minimum" *or* "Max|Maximum" *or* "Step" *or* "Snap" *or* "Rate|Climbrate" *or* "Digits")
+#
+#   <set_value> (<name>, Min => <min_value> *or* Max => <max_value> *or* 
+#                        Step => <step_in/decrease> *or* Page => <page_in/decrease> *or* 
+#                        Snap => <snap_to_tick> *or* Align => <xalign> *or* 
+#                        Rate => <from 0.0 to 1.0> *or* Digits => <used_digits>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_spin_button($@) {
+sub add_spin_button #(Name => <name>, Position => [pos_x, pos_y], [Size => [width, height]], [Start => <start_value>], Minimum => <min_value>, Maximum => <max_value>, Step => <step_in/decrease>, Page => <page_in/decrease>, [Snap => <snap_to_tick>], [Align => <xalign>], [Rate => <from 0.0 to 1.0>], [Digits => <used_digits>], [Frame => <frame_name>], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3623,36 +5331,102 @@ sub add_spin_button($@) {
     if ($align eq 'right') {$spin_button->set_alignment(1);}
 
     # position the spin button
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     
     $spin_button->show();
 }
 
 
 ######################################################################
-# Multiline Text Editor
+#   Group: Multiline Text Editor
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkTextView
+#   Widget that displays a GtkTextBuffer.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_text_view(    Name        => <name>,                  <= widget name - must be unique
-#                   Pos         => [pos_x, pos_y],
-#                   Size        => [width, height],
-#                   Path        => <file_path>,
-#                   Textbuf     => <text_buffer_object>
-#                   Text        => <text_string>
-#                   Font        => [family, size, weight]   <= Optional. Sets a textview font. to use the defaults set values with undef
-#                   LeftMargin  => <in_pixel>               <= Optional. Default: 0
-#                   RightMargin => <in_pixel>               <= Optional. Default: 0
-#                   Wrapped     => <wrap_mode>              <= Optional. Default: none (char, word, word-char)
-#                   Justify     => <justify>                <= Optional: Default: left (right, center, fill)
-#                   Frame       => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#                   Tip         => <tooltip-text>)          <= Optional
-#                   Func        => <function_click>         <= Optional. Can be set later with add_signal_handler
-#                   Sig         => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens        => <sensitive>              <= Optional. Default: 1
-#)
+#   Function: add_text_view
+#   Creates a new GtkTextView widget.
+#
+#   A GtkTextView is a widget which can display a GtkTextBuffer, which represents the text being edited or viewed.
+#
+#   Internal Name Type:
+#   TextView
+#   
+#   Parameters:
+#   Name                => <name>                   - Name of the text view. Must be unique.
+#   Pos|Position        => [pos_x, pos_y]           - Position of the text view.
+#   Size                => [width, height]          - Width and height of the spin button.
+#   Path                => <file_path>              - Path of the text file.
+#   *OR*
+#   Textbuf|Textbuffer  => <text_buffer_object>     - Sets the buffer being displayed by the text view.
+#   *OR*
+#   Text                => <text_string>            - Text string to display.
+#   [LeftMargin         => <in_pixel>]              - Optional. Sets the default left margin for text in the text view. Default: 0.
+#   [RightMargin        => <in_pixel>]              - Optional. Sets the default right margin for text. Default: 0.
+#   [Wrap|Wrapped       => <wrap_mode>]             - Optional. Sets the line wrapping for the view. Default: left (right, center, fill).
+#   [Justify            => <justification>]         - Optional. Sets the default justification of text. Default: none (char, word, word-char).
+#   [Frame              => <frame_name>]            - Optional. Name of the frame if the text view is located in one. Must be unique. See <add_frame>.
+#   [Tip|Tooltip        => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the text view.
+#   [Func|Function      => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                               *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal         => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#   [Sens|Sensitive     => <sensitive>]             - Optional. Sets the text view active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   # with file
+#   $win->add_text_view(Name => 'tview1', 
+#           Pos         => [40, 260], 
+#           Size        => [200, 120], 
+#           Tip         => 'A text', 
+#           Frame       => 'frame2', 
+#           Path        => './testem.txt', 
+#           Wrapped     => 'char', 
+#           LeftMargin  => 10, 
+#           RightMargin => 10);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/TextView.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkTextView.html>
+#
+#   Available Support Functions:
+#   value = <get_textview> (<name>, "Path" *or* "Textview" *or* "Textbuf|Textbuffer")
+#
+#   <set_textview> (<name>, Path => <file_path> *or* Textbuf|Textbuffer => <text_buffer_object> *or* Text => <text_string>)
+#
+#   string = <get_value> (<name>, "LeftMargin" *or* "RightMargin" *or* "Wrap|Wrapped" *or* "Justify")
+#
+#   <set_value> (<name>, LeftMargin => <in_pixel> *or* RightMargin => <in_pixel> *or* Wrap|Wrapped => <wrap_mode> *or* Justify => <justification>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_text_view($@) {
+sub add_text_view #(Name => <name>, Position => [pos_x, pos_y], Size => [width, height], Path => <file_path>, or Textbuffer => <text_buffer_object>, or Text => <text_string>, [LeftMargin => <in_pixel>], [RightMargin => <in_pixel>], [Wrapped => <wrap_mode>], [Justify => <justification>], [Frame => <frame_name>], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3729,17 +5503,26 @@ sub add_text_view($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the image
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $scrolled_window->show();
 }
 
 
 # ---------------------------------------------------------------------
-# get textview object
-# get_textview(<name> [, <keyname>])
+#   Function: get_textview
+#   Returns the textview reference, its' textbuffer or the file path.
+#   If no <keyname> is given it returns the textview reference only.
+#
+#   Parameters:
+#   <name>      - Name of the textview widget. Must be unique.
+#   [<keyname>] - Optional. Possible values: Path, Textview, Textbuf"|"Textbuffer.
+#
+#   Returns:
+#   The textview reference, its' textbuffer or the file path.
 # ---------------------------------------------------------------------
-sub get_textview($@) {
+sub get_textview #(<name>, [<keyname>])
+{
     my $self = shift;
     my $name = shift;
     my $key = _extend(lc(shift)) || undef;
@@ -3773,13 +5556,22 @@ sub get_textview($@) {
 
 
 # ---------------------------------------------------------------------
-# set_textview( Name => <name>,                     <= widget name - must be unique
-#               Path => <file_path>,
-#               Textbuf => <text_buffer_object>
-#               Text => <string>
-#)
+#   Function: set_textview
+#   Sets a new text, textbuffer or file path.
+#
+#   Parameters:
+#   Name                => <name>                   - Name of the text view. Must be unique.
+#   Path                => <file_path>"             - Path of the new text file.
+#   *OR*
+#   Textbuf|Textbuffer  => <text_buffer_object>     - A new buffer being displayed by the text view.
+#   *OR*
+#   Text                => <text_string>            - A new Text string to display.
+#
+#   Returns:
+#   None. 
 # ---------------------------------------------------------------------
-sub set_textview($@) {
+sub set_textview #(Name => <name>, Path => <file_path>, or Textbuffer => <text_buffer_object>, or Text => <text_string>)
+{
     my $self = shift;
     my $name = shift;
     my %params = $self->_normalize(@_);
@@ -3824,29 +5616,113 @@ sub set_textview($@) {
 
 
 ######################################################################
-# Tree and List Widgets
+#   Group: Tree and List Widgets
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkTreeView
+#   A widget for displaying both trees and lists.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# add_treeview( Name    => <name>,                      <= widget name - must be unique
-#               Type    => <List|Tree>                  <= type of treeview
-#               Pos     => [pos_x, pos_y], 
-#               Size    => [width, height],            
-#               Headers => [<Array_of_column_pairs>],   <= List of <column_text> => <column_type>. Possible column types:
-#                                                          text    normal text strings
-#                                                          int     integer values
-#                                                          double  double-precision floating point values
-#                                                          bool    boolean values, displayed as toggle-able checkboxes
-#                                                          scalar  a perl scalar, displayed as a text string by default
-#                                                          pixbuf  a Gtk2::Gdk::Pixbuf
-#               Data    => [<Array_of_arrays>],         <= Optional. Can be set later with set_data_array()
-#               Treeview=> <Gtk2::TreeView>             <= Optional. An existing Gtk2::TreeView object
-#               Sens    => <sensitive>                  <= Optional. Default: 1
-#               Mode    => <selection mode>             <= Optional. Set selection mode. Default is 'single'. Other
-#                                                          possibilities: 'none', 'browse' and 'multiple'.
-#)
+#   Function: add_treeview
+#   Creates a new GtkTreeView widget.
+#
+#   A Widget that displays List and Tree objects implemented by the GtkTreeModel interface.
+#
+#   Internal Name Type:
+#   List or Tree
+#   
+#   Parameters:
+#   Name                => <name>                       - Name of the tree view. Must be unique.
+#   Type                => <List|Tree>                  - Type of the tree view. 'List' or 'Tree'.
+#   Pos|Position        => [pos_x, pos_y]               - Position of the tree view.
+#   Size                => [width, height]              - Width and height of the tree view.
+#   Headers             => [<Array_of_column_pairs>]]   - List of <column_text> => <column_type>. 
+#   [Data               => [<Array_of_arrays>]]         - Optional. Data of the list or tree. Can be set later with <set_value>.
+#   [Treeview           => <Gtk2::TreeView>             - Optional. An existing Gtk2::TreeView object.
+#   [Mode               => <selection mode>]            - Optional. Set selection mode. Default is 'single'. Other
+#                                                                   possibilities: 'none', 'browse' and 'multiple'.
+#   [Frame              => <frame_name>]                - Optional. Name of the frame if the text view is located in one. Must be unique. See <add_frame>.
+#   [Func|Function      => <function_click>]            - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                                   *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal         => <signal>]                    - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                                   Most used is 'cursor-changed'.
+#   [Sens|Sensitive     => <sensitive>]                 - Optional. Sets the tree view active/inactive. Default: 1 (active).
+#
+#   Possible column types:
+#   text    -   Normal text strings.
+#   int     -   Integer values.
+#   double  -   Double-precision floating point values.
+#   bool    -   Boolean values, displayed as toggle-able checkboxes.
+#   scalar  -   A perl scalar, displayed as a text string by default.
+#   pixbuf  -   A Gtk2::Gdk::Pixbuf.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   # list
+#   $win->add_treeview(Name => 'slist',
+#           Type    => 'List',
+#           Pos     => [10, 10],
+#           Size    => [150, 150],
+#           Headers => ['No'    => 'int', 
+#                       'Text1' => 'text',
+#                       'Text2' => 'text'],
+#           Data    => [[1, 'bla', 'lol'],
+#                       [2, 'snore', 'moe'],
+#                       [3, 'yalla', 'meh']]);
+#   $window->add_signal_handler('slist', 'cursor-changed', \&show_index);
+#   --------------------------------------
+#   # tree
+#   $win->add_treeview(Name => 'stree',
+#           Type    => 'Tree',
+#           Pos     => [10, 10],
+#           Size    => [350, 320],
+#           Headers => $headers,
+#           Data    => \@tree,
+#           Sens    => 1);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/TreeView.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkTreeView.html>
+#
+#   Available Support Functions:
+#   reference = <get_treeview> (<name>, "List" *or* "Tree")
+#
+#   <set_value> (<name>, mode => <selection_mode> *or* sortable => <0/1> *or* reordable => <0/1>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   List only Support Functions:
+#   value = <get_value> (<name>, "Editable" *or* "Path" *or* "Cell")
+#
+#   <set_value> (<name>, select => <row|[row_list]> *or* unselect => <row|[row_list]>)
+#
+#   Tree only Support Functions:
+#   value = <get_value> (<name>, "Iter" *or* "Path" *or* "Row")
+#
+#   <set_value> (<name>, iter => <iter> *or* path => <path_object> *or* row => [row_values])
+#
 # ---------------------------------------------------------------------
-sub add_treeview($@) {
+sub add_treeview #(Name => <name>, Type => <List|Tree>, Position => [pos_x, pos_y], Size => [width, height], Headers => [<Array_of_column_pairs>], [Data => [<Array_of_arrays>]], [Treeview => <Gtk2::TreeView>], [Mode => <selection mode>], [Frame => <frame_name>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -3920,17 +5796,25 @@ sub add_treeview($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the list/tree
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $scrolled_window->show();
 }
 
 
 # ---------------------------------------------------------------------
-# get treeview object
-# get_treeview(<name> [, <keyname>])
+#   Function: get_treeview
+#   Returns the treeview reference.
+#
+#   Parameters:
+#   <name>          - Name of the treeview widget. Must be unique.
+#   [<keyname>]     - Optional. Possible values: "List" or "Tree".
+#
+#   Returns:
+#   The textview reference, its' textbuffer or the file path.
 # ---------------------------------------------------------------------
-sub get_treeview($@) {
+sub get_treeview #(<name>, [<keyname>])
+{
     my $self = shift;
     my $name = shift;
     my $key = shift;
@@ -3973,6 +5857,50 @@ sub get_treeview($@) {
 # cell manipulation
 # modify_list_data(<name>, set => [<row|iter>, <column>, <modification>])
 # ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+#   Function: modify_list_data
+#   Modifies the list data.
+#
+#   Parameters:
+#   <name>                                                  - Name of the treeview widget. Must be unique.
+#   <command>   => <modification_array>                     - For row manipulation. Possible commands: "push" "pop", "unshift", "shift", "delete", "clear".
+#   *OR*
+#   <command>                                               - For row manipulation. Possible commands: "push" "pop", "unshift", "shift", "delete", "clear".
+#   set         => [<row|iter>, <column>, <modification>]   - For cell manipulation.
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#   (start code)
+#   # *** Row manipulation ***
+#
+#   # push a row onto the end of the list
+#   $win->modify_list_data('slist', push => [(++$i), 'woop', 'chakka']);
+#   # pop a row off of the end of the list
+#   $rowref = pop @{$slist->{data}};
+#   # unshift a row onto the beginning of the list
+#   unshift @{$slist->{data}}, [col1_data, col2_data, ..., coln_data];
+#   # shift a row off of the beginning of the list
+#   $rowref = shift @{$slist->{data}};
+#   # delete the row at index $n, 0 indexed
+#   splice @{ $slist->{data} }, $n, 1;
+#   # set the entire list to be the data in a array
+#   @{$slist->{data}} = ( [row1, ...], [row2, ...], [row3, ...] );
+#
+# Getting at the data in the list:
+#
+#   # get an array reference to the entire nth row
+#   $rowref = $slist->{data}[n];
+#   # get the scalar in the mth column of the nth row, 0 indexed
+#   $val = $slist->{data}[n][m];
+#   # set an array reference to the entire nth row
+#   $slist->{data}[n] = [col1_data, col2_data, ..., coln_data];
+#   # get the scalar in the mth column of the nth row, 0 indexed
+#   $slist->{data}[n][m] = $rowm_coln_value;
+#   --------------------------------------
+#   (end code)
+ # ---------------------------------------------------------------------
 sub modify_list_data($@) {
     my $self = shift;
     my $name = shift;
@@ -4066,24 +5994,84 @@ sub modify_tree_data($@) {
 
 
 ######################################################################
-# Combo Box and Menus
+#   Group: Combo Box and Menus
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkComboBox
+#   A widget used to choose from a list of items.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# add_combo_box(    Name => <name>,                     <= widget name - must be unique
-#                   Pos => [pos_x, pos_y], 
-#                   Size => [width, height],            <= Optional
-#                   Data => [Array_of_values>],
-#                   Start => <start_value>,
-#                   Columns = <wrap_list_to_x_columns>  <= Optional
-#                   Tip => <tooltip-text>)              <= Optional
-#                   Frame => <frame_name>               <= Name of the frame where widget is located. Must be unique
-#                   Func => <function_click>            <= Optional. Can be set later with add_signal_handler
-#                   Sig => <signal>                     <= Optional. Only in conjunction with Func
-#                   Sens => <sensitive>                 <= Optional. Default: 1
-#)
+#   Function: add_combo_box
+#   Creates a new GtkComboBox widget.
+#
+#   A GtkComboBox is a widget that allows the user to choose from a list of valid choices. 
+#   The GtkComboBox displays the selected choice. When activated, the GtkComboBox displays 
+#   a popup which allows the user to make a new choice.
+#
+#   Internal Name Type:
+#   ComboBox
+#   
+#   Parameters:
+#   Name            => <name>                       - Name of the combo box. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]               - Position of the combo box.
+#   Data            => [Array_of_values>]           - Array of values/strings being displayed in the combo box.
+#   [Start          => <start_value>]               - Optional. Sets the active item of the combo box to be the item at index. Default: 0.
+#   [Size           => [width, height]]             - Optional. Width and height of the combo box.
+#   [Frame          => <frame_name>]                - Optional. Name of the frame if the combo box is located in one. Must be unique. See <add_frame>.
+#   [Tip|Tooltip    => <tooltip_text>]              - Optional. Text of the tooltip shown while hovering over the combo box.
+#   [Func|Function  => <function_click>]            - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                               *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                    - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                               Most used signal is 'changed'. For more see References below.
+#   [Sens|Sensitive => <sensitive>]                 - Optional. Sets the combo box active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_combo_box(Name => 'combo1', 
+#           Pos     => [100, 60], 
+#           Data    => ['one', 'two', 'three', 'four'], 
+#           Start   => 1, 
+#           Tip     => 'Jup', 
+#           Frame   => 'frame1');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/ComboBox.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkComboBox.html>
+#
+#   Available Support Functions:
+#   state = <is_active> (<name>, <value|string>)
+#
+#   string = <get_value> (<name>, "Active" or "Data" or "Columns")
+#
+#   <set_value> (<name>, Active => "<active_index>" *or* Data => [<Array_of_values>] *or* Columns => <wrap_list_to_x_columns>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_combo_box($@) {
+sub add_combo_box #(Name => <name>, Position => [pos_x, pos_y], Data => [Array_of_values>], [Start => <start_value>], [Size => [width, height]], [Frame => <frame_name>], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4123,19 +6111,58 @@ sub add_combo_box($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the combo box
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     
     $combo_box->show();
 }
 
 
+# *********************************************************************
+#   Widget: GtkMenuBar
+#   A standard menu bar.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_menu_bar( Name    => <name>,                <= widget name - must be unique
-#               Pos     => [pos_x, pos_y], 
-#               Size    => [width, height],       <= Optional. Default is complete window width      
-#)
+#   Function: add_menu_bar
+#   Creates a new GtkMenuBar widget.
+#
+#   The GtkMenuBar is a subclass of GtkMenuShell which contains one to many GtkMenuItem. The result is a standard menu bar which can hold many menu items.
+#
+#   Internal Name Type:
+#   MenuBar
+#   
+#   Parameters:
+#   Name            => <name>                       - Name of the menu bar. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]               - Position of the menu bar.
+#   [Size           => [width, height]]             - Optional. Width and height of the menu bar. Default: at top of the window.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_menu_bar(Name => 'menubar1', Pos => [0,0]);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/MenuBar.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkMenuBar.html>
+#
+#   Available Support Functions:
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
 # ---------------------------------------------------------------------
-sub add_menu_bar($@) {
+sub add_menu_bar #(Name => <name>, Position => [pos_x, pos_y], [Size => [width, height]])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4174,7 +6201,7 @@ sub add_menu_bar($@) {
     $self->{objects}->{$object->{name}} = $object;
 
     # position the menu bar
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $vbox->add($menu_bar);
     #$vbox->pack_start($menu_bar,1,1,0);
@@ -4188,15 +6215,63 @@ sub add_menu_bar($@) {
     push(@{$self->{lates}}, $object->{name});
 }
 
+
+# *********************************************************************
+#   Widget: GtkMenu
+#   A menu widget.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_menu( Name    => <name>,                  <= widget name - must be unique
-#           Menubar => <menu_bar>
-#           Title   => <title>,
-#           Justify => <justify>                <= Optional: Default: left (right)
-#           Sens    => <sensitive>              <= Optional. Default: 1
-#)
+#   Function: add_menu
+#   Creates a new GtkMenu widget.
+#
+#   A GtkMenu is a GtkMenuShell that implements a drop down menu consisting of a list of GtkMenuItem 
+#   objects which can be navigated and activated by the user to perform application functions.
+#
+#   A GtkMenu is most commonly dropped down by activating a GtkMenuItem in a GtkMenuBar or popped up by activating a GtkMenuItem in another GtkMenu. 
+#
+#   Internal Name Type:
+#   Menu
+#   
+#   Parameters:
+#   Name            => <name>                       - Name of the menu. Must be unique.
+#   Menubar         => <menu_bar>                   - Name of the menu bar the menu is registered. Must be unique. See <add_menubar>.
+#   Title           => <title>                      - Text of the menu. An underline at the beginning of the text actvates a hotkey.
+#   [Justify        => <justification>]             - Optional. The position in the menu bar. Default: left (right).
+#   [Sens|Sensitive => <sensitive>]                 - Optional. Sets the menu active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   # menu Edit
+#   $win->add_menu(Name => 'menu_edit',
+#           Title   => '_Edit', 
+#           Menubar => 'menubar1');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Menu.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkMenu.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "Justify")
+#
+#   <set_value> (Justify => <justification>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
 # ---------------------------------------------------------------------
-sub add_menu($@) {
+sub add_menu #(Name => <name>, Menubar => <menu_bar>, Title => <title>, [Justify => <justification>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4240,21 +6315,129 @@ sub add_menu($@) {
 # ---------------------------------------------------------------------
 
 
+# *********************************************************************
+#   Widget: GtkMenuItem
+#   The widget used for item in menus.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_menu_item(    Type => <type>,             <= Optional. Item type. Default: Item (tearoff, radio, check, separator)
-#                   Name => <name>,             <= widget name - must be unique 
-#                   Title => <title>,           <= Optional. Not usuable for tearoff and separator
-#                   Tip => 'Blafasel',          <= Optional. Not usuable for separator
-#                   Icon => <path>,             <= Optional. Not usuable for tearoff and separator
-#                   Menu => 'EditMenu', 
-#                   Func => <function_click>    <= Optional. Not usuable for tearoff and separator
-#                   Sig => <signal>             <= Optional. Only in conjunction with Func
-#                   Sens => <sensitive>         <= Optional. Default: 1
-#                   Group => <button_group>,    <= Name of the buttongroup. Must be unique
-#                   Active => 0/1               <= Which is the active button. Default: 0 (not active)
-#)
+#   Function: add_menu_item
+#   Creates a new GtkMenuItem widget.
+#
+#   The GtkMenuItem widget and the derived widgets are the only valid childs for menus.
+#
+#   Their function is to correctly handle highlighting, alignment, events and submenus.
+#
+#   Internal Name Types:
+#   MenuItem, TearOffMenuItem, SeparatorMenuItem, RadioMenuItem or CheckMenuItem
+#   
+#   Parameters:
+#   Name            => <name>               - Name of the menu item. Must be a unique.
+#   Menu            => <menu_name>          - Name of the menu which shall hold the menu item. Must be a unique. See <add_menu>.
+#   [Type           => <type>]              - Optional. Menu item type. Default: Item. Others are: tearoff, radio, check, separator.
+#   [Title          => <title>]             - Optional. Title of the menu item. Not available for tearoff and separator.
+#   [Tip|Tooltip    => <tooltip_text>]      - Optional. Text of the tooltip shown while hovering over the menu item. Not available for separator.
+#   [Icon           => <path|stock|name>]   - Optional. Path of an icon, stock id or icon name on a standard menu item. Not available for separator.
+#   Group           => <group_name>         - Name of the radio menu group the menu item is associated to. Must be unique.
+#   Active          => <0/1>                - Sets the status of the radio menu. Only one in the group can be set to 1! Default: 0
+#   [Func|Function  => <function>]          - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                       *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]            - Optional. Signal/event. Only in conjunction with 'Func'.
+#   [Sens|Sensitive => <sensitive>]         - Optional. Set menu item active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   # menu tearoff
+#   $win->add_menu_item(Name => 'menu_item_toff',
+#           Type    => 'tearoff', 
+#           Menu    => 'menu_edit', 
+#           Tip     => 'This is a tearoff');
+#
+#   # menu item Save
+#   $win->add_menu_item(Name => 'menu_item_save', 
+#           Icon    => 'gtk-save', 
+#           Menu    => 'menu_edit', 
+#           Tip     => 'This is the Save entry');
+#
+#   # separator
+#   $win->add_menu_item(Name => 'menu_item_sep1', 
+#           Type    => 'separator', 
+#           Menu    => 'menu_edit');
+#
+#   # icon
+#   $win->add_menu_item(Name => 'menu_item_icon', 
+#           Title   => 'Burger', 
+#           Icon    => './1.png', 
+#           Menu    => 'menu_edit', 
+#           Tip     => 'This is a Burger');
+#
+#   # check menu
+#   $win->add_menu_item(Name => 'menu_item_check', 
+#           Type    => 'check', 
+#           Title   => 'Check em', 
+#           Menu    => 'menu_edit', 
+#           Tip     => 'This is a Check menu', 
+#           Active  => 1);
+#
+#   # radio menu
+#   $win->add_menu_item(Name => 'menu_item_radio1', 
+#           Type    => 'radio', 
+#           Title   => 'First', 
+#           Menu    => 'menu_edit', 
+#           Tip     => 'First radio', 
+#           Group   => 'Yeah', 
+#           Active  => 1);
+#   $win->add_menu_item(Name => 'menu_item_radio2', 
+#           Type    => 'radio', 
+#           Title   => 'Second', 
+#           Menu    => 'menu_edit', 
+#           Tip     => 'Second radio', 
+#           Group   => 'Yeah');
+#   $win->add_menu_item(Name => 'menu_item_radio3', 
+#           Type    => 'radio', 
+#           Title   => '_Third', 
+#           Menu    => 'menu_edit', 
+#           Tip     => 'Third radio', 
+#           Group   => 'Yeah');
+#   (end code)
+#
+#   References:
+#   Gtk2-Perl <MenuItem at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/MenuItem.pod.html>, 
+#   <RadioMenuItem at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/RadioMenuItem.pod.html>, 
+#   <CheckMenuItem at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/CheckMenuItem.pod.html>, 
+#   <SeparatorMenuItem at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/SeparatorMenuItem.pod.html>,
+#   <TearoffMenuItem at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/TearoffMenuItem.pod.html>
+#
+#   Gtk2 <MenuItem at https://developer.gnome.org/gtk2/stable//GtkMenuItem.html>, 
+#   <RadioMenuItem at https://developer.gnome.org/gtk2/stable//GtkRadioMenuItem.html>, 
+#   <CheckMenuItem at https://developer.gnome.org/gtk2/stable//gtk2-gtkcheckmenuitem.html>, 
+#   <SeparatorMenuItem at https://developer.gnome.org/gtk2/stable//GtkSeparatorMenuItem.html>,
+#   <TearoffMenuItem at https://developer.gnome.org/gtk2/stable//GtkTearoffMenuItem.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "IconPath" *or* "StockIcon" *or* "IconName" *or* "Icon" *or* "Active" *or* "Group" *or* "Groupname|Gname")
+#
+#   <set_value> (Icon => <path|stock|name> *or* Active => <0/1>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_menu_item($@) {
+sub add_menu_item #(Name => <name>, Menu => <menu_name>, [Type => <type>], [Title => <title>], [Tip|Tooltip => <tooltip_text>], [Icon => <path|stock|name>], Group => <group_name>, Active => <0/1>, [Func|Function => <function>], [Sig|Signal => <signal>], [Sens|Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     
@@ -4288,7 +6471,7 @@ sub add_menu_item($@) {
     $self->{objects}->{$object->{name}} = $object;
 
     # common menu item specific fields
-    my $menu = $self->get_widget($params{'menu'});
+    my $menu = $self->_get_ref($params{'menu'});
     my $icon = $object->{icon} = $params{'icon'} || undef;
         
     # create menu item
@@ -4367,26 +6550,90 @@ sub add_menu_item($@) {
 
 
 ######################################################################
-# Selectors (File/Font)
+#   Group: Selectors (File/Font)
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkFileChooserButton
+#   A button to launch a file selection dialog.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_filechooser_button(   Name    => <name>,              <= Name of the button. Must be unique
-#                           Pos     => [pos_x, pos_y], 
-#                           Title   => <title>,
-#                           Size    => [width, height],     <= Optional
-#                           Tip     => <tooltip-text>       <= Optional
-#                           Action  => <open_mode>          <= The open modes are: 'open' and 'select-folder'.
-#                           Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#                           File    => <file_path>          <= Optional. Set file for 'open' action
-#                           Filter  => <pattern|mimetype> | [<name>, <pattern|mimetype>]  <= Optional. Sets the current file filter for 'open' action
-#                           Folder  => <directory>          <= Optional. Set directory for 'select-folder' action or if no file path is set for 'open' action
-#                           Func    => <function>           <= Optional. Can be set later with add_signal_handler
-#                           Sig     => <signal>             <= Optional. Only in conjunction with Func
-#                           Sens    => <sensitive>          <= Optional. Default: 1
-#)
+#   Function: add_filechooser_button
+#   Creates a new GtkFileChooserButton widget.
+#
+#   The GtkFileChooserButton is a widget that lets the user select a file or folder. It implements the GtkFileChooser interface.
+#
+#   Internal Name Type:
+#   FileChooserButton
+#   
+#   Parameters:
+#   Name            => <name>                                           - Name of the button. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]                                   - Position of the button.
+#   Title           => <title>                                          - Title of the button (displayed in the button).
+#   Action          => <open_mode>                                      - Sets the mode which confirmation dialog should appear. The open modes are: 'open' and 'select-folder'.
+#   [Frame          => <frame_name>]                                    - Optional. Name of the frame if the button is located in one. Must be unique. See <add_frame>.
+#   [File           => <file_path>]                                     - Optional. Sets a file path for 'open' action.
+#   [Filter         => <pattern|mimetype> | [<name>, <pattern|mimetype>]]      - Optional. Sets the current file filter for 'open' action.
+#   [Folder         => <directory>]                                     - Optional. Sets a directory for 'select-folder' action or if no file path is set for 'open' action.
+#   [Size           => [width, height]]                                 - Optional. Width and height of the button. Default is 80x25.
+#   [Tip|Tooltip    => <tooltip_text>]                                  - Optional. Text of the tooltip shown while hovering over the button.
+#   [Func|Function  => <function_click>]                                - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                                                   *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                                        - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                                                   Can be 'activate', 'clicked', 'enter', 'leave' or 'pressed'.
+#   [Sens|Sensitive => <sensitive>]                                     - Optional. Sets the button active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   # show only images. Start folder is ~/Pictures
+#   $win->add_filechooser_button(Name => 'FButton2',
+#           Pos     => [40, 70],
+#           Size    => [120, 40],
+#           Title   => "Select an image",
+#           Action  => 'open',
+#           Folder  => "$ENV{HOME}/Pictures",
+#           Filter  => ['Images', '*.png']);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/FileChooserButton.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkFileChooserButton.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, )
+#
+#   <set_value> ()
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_filechooser_button($@) {
+sub add_filechooser_button #(Name => <name>, Position => [pos_x, pos_y], Title => <title>, Action => <open_mode>, [Frame => <frame_name>], [File => <file_path>], [Filter => <pattern|mimetype> | [<name>, <pattern|mimetype>]], [Folder => <directory>], [Size => [width, height]], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4459,26 +6706,80 @@ sub add_filechooser_button($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the button
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $filechooser_button->show();
 }
 
 
+# *********************************************************************
+#   Widget: GtkFileChooserDialog
+#   A file chooser dialog.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_filechooser_dialog(Name   => <name>,              <= widget name - must be unique
-#                        Title  => <title>,             <= Optional. Title of the dialog
-#                        Action => <open_mode>          <= The open modes are: 'open', 'save', 'select-folder' and 'create-folder'.
-#                        FName  => <file_name>          <= Optional. Set default file name for 'open' or 'save' action
-#                        Filter => <pattern|mimetype> | [<name>, <pattern|mimetype>]  <= Optional. 
-#                                                          Sets the current file filter for 'open' action
-#                        Folder => <directory>          <= Optional. Set the default directory for 'select-folder' action
-#                                                          or if no file path in show_filechooser_dialog is set for 'open' or 'save' action.
-#                                                          Default is $home
-#                        RFunc  => <response_function>  <= Optional. If not set show_filechooser_dialog will return the response
-#)                                                         (the path/folder or 0)
+#   Function: add_filechooser_dialog
+#   Creates a new GtkFileChooserDialog widget.
+#
+#   GtkFileChooserDialog is a dialog box suitable for use with "File/Open" or "File/Save as" commands.
+#
+#   Internal Name Type:
+#   FileChooserDialog
+#   
+#   Parameters:
+#   Name            => <name>                                           - Name of the dialog. Must be unique.
+#   Action          => <open_mode>                                      - Sets the mode which confirmation dialog should appear. 
+#                                                                         The open modes are: 'open', 'save', 'select-folder' and 'create-folder'.
+#   [Title          => <title>]                                         - Optional. Title of the dialog (displayed in the dialog titlebar).
+#   [File           => <file_name>]                                     - Optional. Sets the default file name for 'open' or 'save' action.
+#   [Filter         => <pattern|mimetype> | [<name>, <pattern|mimetype>]]      - Optional. Sets the current file filter for 'open' action.
+#   [Folder         => <directory>]                                     - Optional. Sets a directory for 'select-folder' action or if no file path 
+#                                                                         in <show_filechooser_dialog> is set for 'open' or 'save' action.
+#   [RFunc          => <response_function>]                             - Optional. If not set <show_filechooser_dialog> will return the response.
+#
+#   Returns:
+#   The chosen path/folder or 0.
+#
+#   Example:
+#   (start code)
+#   sub response {
+#       my $resp = shift;
+#       print "response: " . $resp . "\n"; 
+#   }
+#   
+#   my $win = SimpleGtk2->new_window(Name => 'mainWindow', 
+#                           Title   => 'File Chooser dialog', 
+#                           Size    => [200, 100]);
+#   
+#   $win->add_button( Name => 'tryButton', 
+#           Pos     => [20, 15], 
+#           Size    => [80, 25], 
+#           Title   => "Try");
+#   $win->add_signal_handler('tryButton', 'clicked', sub{$win->show_filechooser_dialog('fchooserdiag');});
+#   
+#   $win->add_filechooser_dialog(Name => 'fchooserdiag',
+#           Title   => 'Open a file',
+#           Action  => 'open',
+#           RFunc   => \&response);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/FileChooserDialog.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkFileChooserDialog.html>
+#
+#   Available Support Functions:
+#   response = <show_filechooser_dialog> (<name>, <filename|file|folder>)
+#
+#   string = <get_value> (<name>, )
+#
+#   <set_value> ()
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
 # ---------------------------------------------------------------------
-sub add_filechooser_dialog($@) {
+sub add_filechooser_dialog #(Name => <name>, Action => <open_mode>, [Title => <title>], [FName => <file_name>], [Filter => <pattern|mimetype> | [<name>, <pattern|mimetype>]], [Folder => <directory>], [RFunc => <response_function>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4538,12 +6839,65 @@ sub add_filechooser_dialog($@) {
 
 
 # ---------------------------------------------------------------------
-# show_filechooser_dialog(<name>, <filename|file|folder>)
-# or a simple one
-# show_filechooser_dialog(<action_type>, <filename|file|folder>, <pattern|mimetype> | [<name>, <pattern|mimetype>])
-# returns the path/folder or 0
+#   Function: show_filechooser_dialog
+#   Shows a simple or normal filechooser dialog.
+#
+#   The normal filechooser dialog needs a filechooser dialog object created with <add_filechooser_dialog>.
+#
+#   The simple filechooser dialog doesn't need this object.
+#
+#   Parameters for normal:
+#   <name>                      - Name of the filechooser dialog. Must be unique.
+#   <filename|file|folder>      - The filename or file path or folder.
+#
+#   Parameters for simple:
+#   <action_type>                                       - The mode which confirmation dialog should appear. 
+#                                                         Could be: 'open', 'save', 'select-folder' and 'create-folder'.
+#   <filename|file|folder>                              - The filename for 'open' or 'save' action, 
+#   <pattern|mimetype> | [<name>, <pattern|mimetype>]   - The used file filter for 'open' action.
+#
+#   Returns:
+#   The chosen path/folder or 0.
+#
+#   Examples:
+#   (start code)
+#   # A simple filechooser dialog
+#
+#   sub response {
+#       my $win = shift;
+#       my $resp = $win->show_filechooser_dialog('create-folder');
+#       print "response: " . $resp . "\n"; 
+#   }
+#   
+#   $win->add_button( Name => 'tryButton', 
+#           Pos     => [70, 45], 
+#           Size    => [80, 25], 
+#           Tip     => "Shows a simple filechooser dialog.",
+#           Title   => "Simple");
+#   $win->add_signal_handler('tryButton', 'clicked', sub{&response($win);});
+#   --------------------------------------
+#   # A normal filechooser dialog
+#
+#   sub response {
+#       my $resp = shift;
+#       print "response: " . $resp . "\n"; 
+#   }
+#   
+#   $win->add_button( Name => 'tryButton', 
+#           Pos     => [70, 15], 
+#           Size    => [80, 25],
+#           Tip     => "Shows a normal filechooser dialog.",
+#           Title   => "Normal");
+#   $win->add_signal_handler('tryButton', 'clicked', sub{$win->show_filechooser_dialog('fchooserdiag');});
+#   
+#   $win->add_filechooser_dialog(Name => 'fchooserdiag',
+#           Title   => 'Open a file',
+#           Action  => 'open',
+#           RFunc => \&response);
+#   (end code)
 # ---------------------------------------------------------------------
-sub show_filechooser_dialog($@) {
+sub show_filechooser_dialog #(<name>, <filename|file|folder>), or (<action_type>, <filename|file|folder>, <pattern|mimetype>, or [<name>, <pattern|mimetype>])
+{
     my $self = shift;
     my ($name, $file_folder, $_filter) = @_;
     
@@ -4694,20 +7048,79 @@ sub show_filechooser_dialog($@) {
 }
 
 
+# *********************************************************************
+#   Widget: GtkFontButton
+#   A button to launch a font selection dialog.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_font_button(  Name    => <name>,                  <= Name of the button. Must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Title   => <title>,                 <= Optional. The title displayed in the font dialog
-#                   Size    => [width, height],         <= Optional
-#                   Tip     => <tooltip-text>           <= Optional
-#                   Frame   => <frame_name>             <= Name of the frame where widget is located. Must be unique
-#                   Font    => [family, size, weight]   <= Optional. Sets the initial font. Font family and size are requiered if set
-#                   Func    => <function>               <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>                 <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>              <= Optional. Default: 1
-#)
+#   Function: add_font_button
+#   Creates a new GtkFontButton widget.
+#
+#   The GtkFontButton is a button which displays the currently selected font an allows to open a font selection dialog to change the font.
+#
+#   Internal Name Type:
+#   FontButton
+#   
+#   Parameters:
+#   Name            => <name>                   - Name of the button. Must be unique.
+#   Pos|Position    => [pos_x, pos_y]           - Position of the button.
+#   Title           => <title>                  - Title of the button (displayed in the button).
+#   [Frame          => <frame_name>]            - Optional. Optional. Name of the frame if the button is located in one. Must be unique. See <add_frame>.
+#   [Font           => [family, size, weight]]  - Optional. Sets the initial font. Font family and size are required if set.
+#   [Size           => [width, height]]         - Optional. Width and height of the button. Default is 80x25.
+#   [Tip|Tooltip    => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the button.
+#   [Func|Function  => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                           *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal     => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                           Can be 'activate', 'clicked', 'enter', 'leave' or 'pressed'.
+#   [Sens|Sensitive => <sensitive>]             - Optional. Sets the button active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $window->add_font_button(Name => 'font_button', 
+#               Pos     => [20, 40], 
+#               Font    => ["Arial", 12]);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/FontButton.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkFontButton.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "Uri")
+#
+#   <set_value> (<name>, Uri => <uri-text>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_font_button($@) {
+sub add_font_button #(Name => <name>, Position => [pos_x, pos_y], Title => <title>, Action => <open_mode>, [Frame => <frame_name>], [Font => [family, size, weight]], [Size => [width, height]], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4740,22 +7153,57 @@ sub add_font_button($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the button
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $font_button->show();
 }
 
 
+# *********************************************************************
+#   Widget: GtkFontSelectionDialog
+#   A dialog box for selecting fonts.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_fontselection_dialog( Name    => <name>,                  <= widget name - must be unique
-#                           Title   => <title>,                 <= The title displayed in the font dialog
-#                           Font    => [family, size, weight]   <= Optional. Sets the initial font. Font family and size are requiered if set
-#                           Preview => <preview text>           <= Optional. Sets the previewed text
-#                           RFunc   => <response_function>      <= Optional. If not set show_font_dialog will return the response 
-#                                                                           (the font string: "fontname weight size" or 0)
-#)
+#   Function: add_fontselection_dialog
+#   Creates a new GtkFontSelectionDialog widget.
+#
+#   The GtkFontSelectionDialog widget is a dialog box for selecting a font.
+#
+#   Internal Name Type:
+#   FontSelectionDialog
+#   
+#   Parameters:
+#   Name        => <name>                       - Name of the dialog. Must be unique.
+#   Title       => <title>                      - Title of the dialog (displayed in the dialog titlebar).
+#   [Font       => [family, size, weight]]      - Optional. Sets the initial font. Font family and size are required if set.
+#   [Preview    => <preview text>]              - Optional. Sets the previewed text.
+#   [RFunc      => <response_function>]         - Optional. If not set <show_font_dialog> will return the response.
+#
+#   Returns:
+#   The font string: "fontname weight size" or 0.
+#
+#   Example:
+#   (start code)
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/FontSelectionDialog.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkFontSelectionDialog.html>
+#
+#   Available Support Functions:
+#   response = <show_font_dialog> (<name>)
+#
+#   string = <get_value> (<name>, "previewstring" *or* "fontstring" *or* "fontfamily" *or* "fontsize" *or* "fontweight")
+#
+#   <set_value> (<name>, previewstring => <preview_text> *or* fontstring => <font_string> *or* fontfamily => <font_family> *or* fontsize => <font_size> *or* fontweight => <font_weight>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
 # ---------------------------------------------------------------------
-sub add_fontselection_dialog($@) {
+sub add_fontselection_dialog #(Name => <name>, Title => <title>, [Font => [family, size, weight]], [Preview => <preview text>], [RFunc => <response_function>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4791,12 +7239,33 @@ sub add_fontselection_dialog($@) {
 
 
 # ---------------------------------------------------------------------
-# show_fontselection_dialog(<name>)
-# or a simple one
-# show_fontselection_dialog(family, size, weight)
-# returns the font string: "family weight size" or 0
+#   Function: show_fontselection_dialog
+#   Shows simple or normal fontselection dialog.
+#
+#   The normal fontselection dialog needs a fontselection dialog object created with <add_fontselection_dialog>.
+#
+#   The simple fontselection dialog doesn't need this object.
+#
+#   Parameters for normal:
+#   <name>      - Name of the fontselection dialog. Must be unique.
+#
+#   Parameters for simple:
+#   <family>    - The initial font family. 
+#   <size>      - The initial font size. 
+#   <weight>    - The initial font weight.
+#
+#   Returns:
+#   The font string: "fontname weight size" or 0.
+#
+#   Examples:
+#   (start code)
+#   # A simple fontselection dialog
+#   --------------------------------------
+#   # A normal fontselection dialog
+#   (end code)
 # ---------------------------------------------------------------------
-sub show_fontselection_dialog($@) {
+sub show_fontselection_dialog #(<name>) or (<family>, <size>, <weight>)
+{
     my $self = shift;
     my ($name, $size, $weight) = @_;
     
@@ -4848,20 +7317,84 @@ sub show_fontselection_dialog($@) {
 
 
 ######################################################################
-# Layout Containers
+#   Group: Layout Containers
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkNotebook
+#   A tabbed notebook container.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_notebook( Name => <name>,                     <= widget name - must be unique
-#               Pos => [pos_x, pos_y],
-#               Size => [width, height],
-#               Tabs => <position>                  <= Optional. Default: top (left, right, bottom, none)
-#               Scrollable => 1/0                   <= Optional. Default: 1
-#               Popup => 0/1)                       <= Optional. Default: 0
-#               Frame => <frame_name>               <= Name of the frame where widget is located. Must be unique
-#               Sens => <sensitive>                 <= Optional. Default: 1
+#   Function: add_notebook
+#   Creates a new GtkNotebook widget.
+#
+#   The GtkNotebook widget is a GtkContainer whose children are pages that 
+#   can be switched between using tab labels along one edge.
+#
+#   There are many configuration options for GtkNotebook. Among other things, 
+#   you can choose on which edge the tabs appear (whether, if there are too many 
+#   tabs to fit the notebook should be made bigger or scrolling arrows added, 
+#   and whether there will be a popup menu allowing the users to switch pages.
+#
+#   Internal Name Type:
+#   Notebook
+#
+#   Parameters:
+#   Name                => <name>               - Name of the notebook. Must be unique.
+#   Pos|Position        => [pos_x, pos_y]       - Position of the notebook.
+#   Size                => [width, height]      - Width and height of the notebook.
+#   [Tabs               => <position>]          - Optional. Sets the edge at which the tabs for switching pages in the notebook are drawn.
+#                                                 Default: top (left, right, bottom, none).
+#   [Scroll|Scrollable  => <0/1>]               - Optional. Sets whether the tab label area will have arrows for scrolling if there are too many tabs to fit in the area.
+#                                                 Default: 1.
+#   [Popup              => <0/1>]               - Optional. Enables (1) the popup menu: if the user clicks with the right mouse button on the tab labels, a menu with all the pages will be popped up.
+#   [Frame          => <frame_name>]            - Optional. Name of the frame if the notebook is located in one. Must be unique. See <add_frame>.
+#   [Sens|Sensitive => <sensitive>]             - Optional. Sets the notebook active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_notebook(Name => 'NB1', 
+#           Pos     => [10, 10], 
+#           Size    => [200, 200], 
+#           Tabs    => 'top', 
+#           Popup   => 1);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Notebook.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkNotebook.html>
+#
+#   Available Support Functions:
+#   <add_nb_page> (Name => <name>, Notebook => <notebook_name>, [Font => [family, size, weight]], [Color => [<color>, <state>]], [Pos_n|PositionNumber => <number>], [Tip|Tooltip => <tooltip_text>], [Sens|Sensitive => <sensitive>])
+#
+#   <remove_nb_page> (<nb_name>, <title|number>)
+#
+#   string = <get_value> (<name>, "Current|CurrentPage" *or* "Pages" *or* "Popup" *or* "No2Name|Number2Name" *or* "Scroll|Scrollable" *or* "Tabs")
+#
+#   <set_value> (<name>, Current|CurrentPage => <page_number|next|prev> *or* Popup => <0/1> *or* Scroll|Scrollable => <0/1> *or* Tabs => <edges>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
 # ---------------------------------------------------------------------
-sub add_notebook($@) {
+sub add_notebook #(Name => <name> , Pos|Position => [pos_x, pos_y], Size => [width, height], [Tabs => <position>], [Scroll|Scrollable => <0/1>], [Popup => <0/1>], [Frame => <frame_name>], [Sens|Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4903,25 +7436,72 @@ sub add_notebook($@) {
     $self->_set_commons($object->{name}, %params);
     
     # position the notebook
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $notebook->show();
 }
 
 
+# *********************************************************************
+#   Widget: GtkNotebookPage
+#   A notebook page.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_nb_page(  Name        => <name>,                  <= widget name - must be unique
-#               Title       => <title>,
-#               Font        => [family, size, weight]   <= Optional. Sets the title font. to use the defaults set values with undef
-#               Color       => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                    State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Notebook    => <notebook_name>,         <= notebook name - must be unique
-#               Pos_n       => <number>,                <= Optional. Starts with 0
-#               Tip         => <tooltip-text>)          <= Optional
-#               Sens        => <sensitive>              <= Optional. Default: 1
-#)
+#   Function: add_nb_page
+#   Creates a new GtkNotebook page.
+#
+#   Appends a new page to a notebook. The index starting from 0.
+#
+#   Internal Name Type:
+#   NotebookPage
+#
+#   Parameters:
+#   Name                    => <name>                   - Name of the notebook page. Must be unique.
+#   Title                   => <title>                  - Title of the notebook page (displayed in the tab).
+#   Notebook                => <notebook_name>          - Name of the notebook where the page shall appear. Must be unique.
+#   [Font                   => [family, size, weight]]  - Optional. Sets a title font. To use the defaults set values with undef.
+#   [Color                  => [<color>, <state>]]      - Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
+#                                                         State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (see Gtk2::State).
+#   [Pos_n|PositionNumber   => <number>]                - Optional. Insert a page into the notebook at the given position.
+#   [Tip|Tooltip            => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the page.
+#   [Sens|Sensitive         => <sensitive>]             - Optional. Sets the notebook page active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_nb_page(Name => "NB_page1", 
+#           Pos_n   => 0, 
+#           Title   => "Page 1", 
+#           Notebook => 'NB1', 
+#           Tip     => "This is the first page");
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Notebook.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkNotebook.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "PageNumber" *or* "Notebook")
+#
+#   <set_value> (<name>, Reorder => <0/1>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_nb_page($@) {
+sub add_nb_page #(Name => <name>, Notebook => <notebook_name>, [Font => [family, size, weight]], [Color => [<color>, <state>]], [Pos_n|PositionNumber => <number>], [Tip|Tooltip => <tooltip_text>], [Sens|Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -4977,7 +7557,7 @@ sub add_nb_page($@) {
     $object->{pagelabel} = $label;
 
     # add page to notebook
-    my $notebook = $self->get_widget($object->{notebook});
+    my $notebook = $self->_get_ref($object->{notebook});
     
     if (defined($pos_n)) {
         $notebook->insert_page($object->{ref}, undef, $pos_n);
@@ -5001,9 +7581,18 @@ sub add_nb_page($@) {
 
 
 # ---------------------------------------------------------------------
-# remove_nb_page(<nb_name>, <name/number>)
+#   Function: remove_nb_page
+#   Removes a notebook page from a notebook.
+#
+#   Parameters:
+#   <nb_name>           - Name of the notebook. Must be unique.
+#   <title|number>      - Title or number (0 indexed) of the notebook page.
+#
+#   Returns:
+#   None.
 # ---------------------------------------------------------------------
-sub remove_nb_page($@) {
+sub remove_nb_page #(<nb_name>, <title|number>)
+{
     my $self = shift;
     my ($name, $number) = @_;
     my $nb_object;
@@ -5049,22 +7638,73 @@ sub remove_nb_page($@) {
 
 
 ######################################################################
-# Ornaments
+#   Group: Ornaments
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkFrame
+#   A bin with a decorative frame and optional label.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_frame (   Name    => <name>,                  <= widget name - must be unique
-#               Title   => <title>,
-#               Font    => [family, size, weight]   <= Optional. Sets a frame font. to use the defaults set values with undef
-#               Color   => [<color>, <state>]       <= Optional. Sets a title color. Color can be a standard name e.g. 'red' or a hex value like '#rrggbb',
-#                                                                State can be 'normal', 'active', 'prelight', 'selected' or 'insensitive' (Gtk2::State)
-#               Pos     => [pos_x, pos_y], 
-#               Size    => [width, height],
-#               Tip     => <tooltip-text>)          <= Optional
-#               Sens    => <sensitive>              <= Optional. Default: 1
-#)
+#   Function: add_frame
+#   Creates a new GtkFrame widget.
+#
+#   The frame widget is a Bin that surrounds its child with a decorative frame and an optional label. If present, the label is drawn in a gap in the top side of the frame.
+#
+#   Internal Name Type:
+#   Frame
+#   
+#   Parameters:
+#   Name            => <name>                                           - Name of the frame. Must be unique.
+#   Size            => [width, height]                                  - Width and height of the frame.
+#   Pos|Position    => [pos_x, pos_y]                                   - Position of the frame.
+#                                                                         *Note:* Inside a frame the positioning of a widget starts at the frame and not at the window edges.
+#   [Title          => <title>]                                         - Optional. Title of the frame.
+#   [Frame          => <frame_name>]                                    - Optional. Name of the frame if the frame is located in one. Must be unique. See <add_frame>.
+#   [Font           => [family, size, weight]]                          - Optional. Sets the initial font. Font family and size are required if set.
+#   [Tip|Tooltip    => <tooltip_text>]                                  - Optional. Text of the tooltip shown while hovering over the frame.
+#   [Sens|Sensitive => <sensitive>]                                     - Optional. Sets the frame active/inactive. Default: 1 (active).
+#                                                                                   *Note:* All widgets inside the frame will be deactivated if frame is set to inactive.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_frame(Name => 'frame1', 
+#                   Pos => [5, 5], 
+#                   Size => [390, 190], 
+#                   Title => ' A Frame around ');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/Frame.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkFrame.html>
+#
+#   Available Support Functions:
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_title> (<name>)
+#
+#   <set_title> (<name>, <text>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_frame($@) {
+sub add_frame #(Name => <name>, Position => [pos_x, pos_y], [Title => <title>], [Frame => <frame_name>], [Font => [family, size, weight]], [Tooltip => <tooltip_text>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -5106,90 +7746,208 @@ sub add_frame($@) {
     unless (defined($object->{container})) {
         $self->{container}->put($frame, $object->{pos_x}, $object->{pos_y});
     } else {
-        $self->add_to_container($object->{name});
+        $self->_add_to_container($object->{name});
     }
     
     $frame->show();
 }
 
 
-## ---------------------------------------------------------------------
-## add_separator(Name => <name>,                 <= widget name - must be unique
-##               Pos => [pos_x, pos_y],
-##               Size => [width, height],        <= Optional
-##               Orient => <orientation>         <= orientation of the separator (horizontal, vertical)
-##               Frame => <frame_name>           <= Name of the frame where widget is located. Must be unique
-##               Sens => <sensitive>             <= Optional. Default: 1
-##)
-## ---------------------------------------------------------------------
-#sub add_separator($@) {
-#    my $self = shift;
-#    my %params = $self->_normalize(@_);
-#    my $object = _new_widget(%params);
-#    $object->{type} = 'Separator';
-#    
-#    # separator specific fields
-#    $object->{orientation} = $params{'orientation'} || undef;
+# *********************************************************************
+#   Widget: GtkSeparator
+#   A horizontal or vertical separator.
+# *********************************************************************
+
+# ---------------------------------------------------------------------
+#   Function: add_separator
+#   Creates a new GtkSeparator widget.
 #
-#    # add widget object to window objects list
-#    $self->{objects}->{$object->{name}} = $object;
-#    
-#    # create V or HBox and separator depending on the orientation
-#    my $box;
-#    my $separator;
-#    if ($object->{orientation} eq 'horizontal') {
-#        $box = Gtk2::HBox->new(1,0);
-#        $separator = Gtk2::HSeparator->new();
-#    }
-#    elsif ($object->{orientation} eq 'vertical') {
-#        $box = Gtk2::VBox->new(1,0);
-#        $separator = Gtk2::VSeparator->new();
-#    } else {
-#        $self->internal_die($object, "Wrong orientation '" . $object->{orientation} . "' defined!");
-#    }
-#    
-#    # for later manipulation we put the separator reference to the object
-#    $object->{separator} = $separator;
+#   The GtkSeparator (GtkHSeparator/GtkVSeparator) widget is a horizontal or vertical separator, used to group the widgets within a window. 
+#   It displays a horizontal/vertical line with a shadow to make it appear sunken into the interface.
 #
-#    # add separator to the box
-#    $box->pack_start($separator, 1, 1, 5);
+#   *Note:* The GtkSeparator widget is not used as a separator within menus. To create a separator in a menu create an empty GtkSeparatorMenuItem in <add_menu_item>.
 #
-#    # add box object as the separator object to window objects hash
-#    $object->{ref} = $box;
-#    
-#    # set some common functions: size, tooltip and sensitive state
-#    $self->_set_commons($object->{name}, %params);
-#    
-#    # position the separator
-#    $self->add_to_container($object->{name});
+#   Internal Name Type:
+#   Separator
+#   
+#   Parameters:
+#   Name                => <name>                   - Name of the separator. Must be unique.
+#   Orient|Orientation  => <orientation>            - Orientation of the separator (horizontal, vertical).
+#   Pos|Position        => [pos_x, pos_y]           - Position of the separator.
+#   [Size               => [width, height]]         - Optional. Width and height of the separator.
+#   [Frame              => <frame_name>]            - Optional. Name of the frame if the separator is located in one. Must be unique. See <add_frame>.
+#   [Sens|Sensitive     => <sensitive>]             - Optional. Sets the separator active/inactive. Default: 1 (active).
 #
-#    $separator->show();
-#    $box->show();
-#}
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl GtkHSeparator at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/HSeparator.pod.html>, 
+#   <Gtk2-Perl GtkVSeparator at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/VSeparator.pod.html>, 
+#   <Gtk2 GtkHSeparator at https://developer.gnome.org/gtk2/stable//GtkHSeparator.html>
+#   <Gtk2 GtkVSeparator at https://developer.gnome.org/gtk2/stable//GtkVSeparator.html>
+#
+#   Available Support Functions:
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+# ---------------------------------------------------------------------
+sub add_separator #(Name => <name>, Orient|Orientation => <orientation>, Pos|Position => [pos_x, pos_y], [Size => [width, height]], [Frame => <frame_name>], [Sens|Sensitive => <sensitive>])
+{
+    my $self = shift;
+    my %params = $self->_normalize(@_);
+    my $object = _new_widget(%params);
+    $object->{type} = 'Separator';
+    
+    # separator specific fields
+    $object->{orientation} = $params{'orientation'} || undef;
+
+    # add widget object to window objects list
+    $self->{objects}->{$object->{name}} = $object;
+    
+    # create V or HBox and separator depending on the orientation
+    my $box;
+    my $separator;
+    if ($object->{orientation} eq 'horizontal') {
+        $box = Gtk2::HBox->new(1,0);
+        $separator = Gtk2::HSeparator->new();
+    }
+    elsif ($object->{orientation} eq 'vertical') {
+        $box = Gtk2::VBox->new(1,0);
+        $separator = Gtk2::VSeparator->new();
+    } else {
+        $self->internal_die($object, "Wrong orientation '" . $object->{orientation} . "' defined!");
+    }
+    
+    # for later manipulation we put the separator reference to the object
+    $object->{separator} = $separator;
+
+    # add separator to the box
+    $box->pack_start($separator, 1, 1, 5);
+
+    # add box object as the separator object to window objects hash
+    $object->{ref} = $box;
+    
+    # set some common functions: size, tooltip and sensitive state
+    $self->_set_commons($object->{name}, %params);
+    
+    # position the separator
+    $self->_add_to_container($object->{name});
+
+    $separator->show();
+    $box->show();
+}
 
 
 ######################################################################
-# Scrolling
+#   Group: Scrolling
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkScrollBar
+#   A horizontal or vertical scrollbar.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_scrollbar(    Name    => <name>,              <= widget name - must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Size    => [width, height],     <= Optional
-#                   Orient  => <orientation>        <= orientation of the slider (horizontal, vertical)
-#                   Start   => <start_value>,       <= Optional. Default: 0.0
-#                   Min     => <min_value>,         <= Double
-#                   Max     => <max_value>,         <= Double
-#                   Step    => <step_in/decrease>   <= Double
-#                   Digits  => <digits>             <= Optional. Default: 0 (1 digit)
-#                   Tip     => <tooltip-text>)      <= Optional
-#                   Frame   => <frame_name>         <= Name of the frame where widget is located. Must be unique
-#                   Func    => <function_click>     <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>             <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>          <= Optional. Default: 1
-#)
+#   Function: add_scrollbar
+#   Creates a new GtkScrollBar widget.
+#
+#   The GtkScrollBar widget is a widget arranged horizontally or vertically creating a scrollbar.
+#
+#   Internal Name Type:
+#   Scrollbar
+#   
+#   Parameters:
+#   Name                => <name>                   - Name of the slider. Must be unique.
+#   Pos|Position        => [pos_x, pos_y]           - Position of the scrollbar.
+#   Orient|Orientation  => <orientation>            - The orientation of the scrollbar (horizontal, vertical).
+#   [Size               => [width, height]]         - Optional. Width and height of the scrollbar.
+#   [Start              => <start_value>]           - Optional. The initial start value. Default: 0.0 (double).
+#   Min                 => <min_value>              - The minimum allowed value (double).
+#   Max                 => <max_value>              - The maximum allowed value (double).
+#   Step                => <step_in/decrease>       - The step increment (double).
+#   [Digits             => <used_digits>]           - Optional. Number of decimal places the value will be displayed. Default: 0 (1 digit).
+#   [Frame              => <frame_name>]            - Optional. Name of the frame if the scrollbar is located in one. Must be unique. See <add_frame>.
+#   [Tip|Tooltip        => <tooltip_text>]          - Optional. Text of the tooltip shown while hovering over the scrollbar.
+#   [Func|Function      => <function_click>]        - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                               *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal         => <signal>]                - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                               Most used signal is 'value-changed'. For more see References below.
+#   [Sens|Sensitive     => <sensitive>]             - Optional. Sets the scrollbar active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#   (start code)
+#   # Horizontal
+#   $win->add_scrollbar(Name => 'hscroll', 
+#           Pos     => [10, 220], 
+#           Size    => [200, -1], 
+#           Orient  => 'horizontal', 
+#           Start   => 5, 
+#           Min     => 0, 
+#           Max     => 100, 
+#           Step    => 1, 
+#           Digits  => 1, 
+#           Tip     => 'From left to right', 
+#           Frame   => 'frame2');
+#
+#   # Vertical
+#   $win->add_scrollbar(Name => 'vscroll', 
+#           Pos     => [320, 30], 
+#           Size    => [-1, 150], 
+#           Orient  => 'vertical', 
+#           Start   => 1.5, 
+#           Min     => 0, 
+#           Max     => 100, 
+#           Step    => 1, 
+#           Digits  => 1, 
+#           Tip     => 'Up and down', 
+#           Frame   => 'frame1');
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl HScrollbar at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/HScrollbar.pod.html>, 
+#   <Gtk2-Perl VScrollbar at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/VScrollbar.pod.html>, 
+#   <Gtk2 HScrollbar at https://developer.gnome.org/gtk2/stable//GtkHScrollbar.html>, 
+#   <Gtk2 VScrollbar at https://developer.gnome.org/gtk2/stable//GtkVScrollbar.html>
+#
+#   Available Support Functions:
+#   string = <get_value> (<name>, "Active" *or* "Min|Minimum" *or* "Max|Maximum" *or* "Step" *or* "Digits")
+#
+#   <set_value> (<name>, Start => <start_value> *or* Active => <active_value> *or* Min => <min_value> *or* Max => <max_value> *or* Step => <step_in/decrease> *or* Digits => <used_digits>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
+#
+#   string = <get_tooltip> (<name>)
+#
+#   <set_tooltip> (<name>, <tooltip_text>)
 # ---------------------------------------------------------------------
-sub add_scroll_bar($@) {
+sub add_scrollbar #(Name => <name>, Position => [pos_x, pos_y], Orientation => <orientation>, [Size => [width, height]], [Start => <start_value>], Minimum => <min_value>, Maximum => <max_value>, Step => <step_value>, [Digits => <used_digits>], [Frame => <frame_name>], [Tooltip => <tooltip_text>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -5269,27 +8027,88 @@ sub _create_range_widget($@) {
     # set some common functions: size, tooltip and sensitive state
     $self->_set_commons($object->{name}, %params);
     # position the slider
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
     $range_widget->show();
 }
 
 
 ######################################################################
-# Miscellaneous
+#   Group: Miscellaneous
 ######################################################################
 
+# *********************************************************************
+#   Widget: GtkDrawingArea
+#   A widget for custom user interface elements.
+# *********************************************************************
+
 # ---------------------------------------------------------------------
-# add_drawing_area( Name    => <name>,                      <= widget name - must be unique
-#                   Pos     => [pos_x, pos_y], 
-#                   Size    => [width, height],             <= gtk2 pixmaps have a current limit of short unsigned INT, 
-#                                                              highest pixels is 32767-1 (8bit int max)
-#                   Frame   => <frame_name>                 <= Name of the frame where area is located. Must be unique
-#                   Func    => <function_click>             <= Optional. Can be set later with add_signal_handler
-#                   Sig     => <signal>                     <= Optional. Only in conjunction with Func
-#                   Sens    => <sensitive>                  <= Optional. Default: 1
-#)
+#   Function: add_drawing_area
+#   Creates a new GtkImage widget.
+#
+#   The GtkDrawingArea widget is used for creating custom user interface elements. It's essentially a blank widget. 
+#   After creating a drawing area, the application may want to connect to:
+#   * Mouse and button press signals to respond to input from the user. Use <add_signal_handler> for that.
+#   * The "realize" signal to take any necessary actions when the widget is instantiated on a particular display. (Create GDK resources in response to this signal.)
+#   * The "configure_event" signal to take any necessary actions when the widget changes size.
+#   * The "expose_event" signal to handle redrawing the contents of the widget.
+#
+#   Internal Name Type:
+#   DrawingArea
+#   
+#   Parameters:
+#   Name                => <name>                           - Name of the drawing area. Must be unique.
+#   Pos|Position        => [pos_x, pos_y]                   - Position of the drawing area.
+#   Size                => [width, height]                  - Width and height of the drawing area.
+#                                                             *Note:* Gtk2 pixmaps have a current limit of short unsigned INT, highest pixels is 32767-1 (8bit int max).
+#   [Frame              => <frame_name>]                    - Optional. Name of the frame if the drawing area is located in one. Must be unique. See <add_frame>.
+#   [Func|Function      => <function_click>]                - Optional. Function reference/sub. Can be set later with <add_signal_handler>.
+#                                                                       *Note:* If data is used it have to be set as an array.
+#   [Sig|Signal         => <signal>]                        - Optional. The used action signal. Only in conjunction with Func|Function.
+#                                                                       Most used is 'button_press_event'.
+#   [Sens|Sensitive     => <sensitive>]                     - Optional. Sets the drawing area active/inactive. Default: 1 (active).
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#   (start code)
+#   $win->add_drawing_area(Name => 'drawArea',
+#           Pos     => [10, 10], 
+#           Size    => [$draw_surface[0], $draw_surface[1]]);
+#   $win->add_signal_handler('drawArea', 'button_press_event', \&button_press_event);
+#   $win->add_signal_handler('drawArea', 'button_release_event', \&button_release_event);
+#   $win->add_signal_handler('drawArea', 'motion_notify_event', \&motion_notify_event);
+#   (end code)
+#
+#   References:
+#   <Gtk2-Perl at http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/Gtk2/DrawingArea.pod.html>, 
+#   <Gtk2 at https://developer.gnome.org/gtk2/stable//GtkDrawingArea.html>
+#
+#   Available Support Functions:
+#   <initial_draw> (<drawing_area_name>, <function>, [<data>])
+#
+#   string = <get_value> (<name>, "" *or* "")
+#
+#   <set_value> (<name>,  => <new_value>)
+#
+#   <hide_widget> (<name>)
+#
+#   <show_widget> (<name>)
+#
+#   (width, height) = <get_size> (<name>)
+#
+#   <set_size> (<name>, <new_width>, <new_height>)
+#
+#   (x_pos, y_pos) = <get_pos> (<name>)
+#
+#   <set_pos> (<name>, <new_x>, <new_y>)
+#
+#   state = <is_sensitive> (<name>)
+#
+#   <set_sensitive> (<name>, <state>)
 # ---------------------------------------------------------------------
-sub add_drawing_area {
+sub add_drawing_area #(Name => <name>, Pos => [pos_x, pos_y], Size => [width, height], [Frame => <frame_name>], [Function => <function_click>], [Signal => <signal>], [Sensitive => <sensitive>])
+{
     my $self = shift;
     my %params = $self->_normalize(@_);
     my $object = _new_widget(%params);
@@ -5337,7 +8156,7 @@ sub add_drawing_area {
     $self->_set_commons($object->{name}, %params);
     
     # position the drawing area
-    $self->add_to_container($object->{name});
+    $self->_add_to_container($object->{name});
 
     $scrolled_window->show();
     #push(@{$self->{lates}}, $object->{name});
@@ -5345,10 +8164,24 @@ sub add_drawing_area {
 
 
 # ---------------------------------------------------------------------
-# initial_draw(<drawing_area_name>, <function>, <data>)
-# function to draw with 
+#   Function: initial_draw
+#   Base function to draw with the drawing area.
+#
+#   This base function is needed to draw in SimpleGtk2 because drawings need to initialize *before* Gtk2->main() is called.
+#
+#   Parameters:
+#   <drawing_area_name>     - Name of the drawing area.  Must be unique.
+#   <function>              - Used custom draw function.
+#   [<data>]                - Optional. The data you wish to have passed to this function.
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  $win->initial_draw('drawArea', sub{&draw_rect($win->get_object('drawArea'), \@{$rects{$rect}[0]},$rects{$rect}[1]);});
 # ---------------------------------------------------------------------
-sub initial_draw($@) {
+sub initial_draw #(<drawing_area_name>, <function>, [<data>])
+{
     my $self = shift;
     my ($name, $function, $data) = @_;
     
@@ -5386,23 +8219,50 @@ sub get_color($@) {
 }
 
 
+# *********************************************************************
+#   Widget: GtkTooltip
+#   Add tips to your widgets.
+# *********************************************************************
 # ---------------------------------------------------------------------
-# add tooltip to widget
-# add_tooltip(<name>)
+#   Function: add_tooltip
+#   Add a tooltip to a widget.
+#
+#   The tooltip text should be written in double quotes to support control characters.
+#   Longer text can break with '\' at the end for better overview.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuBar>, <GtkFileChooserDialog>, <GtkFontSelectionDialog>, 
+#   <GtkMessageDialog>, <GtkTreeView>, <GtkStatusbar>, <GtkTextView>, <GtkSeparator> and <GtkNotebook>.
+#
+#   Parameters:
+#   <name>              - Name of a widget.  Must be unique.
+#   <tooltip_text>      - Text of the tooltip
+#
+#   Returns:
+#   None.
+#
+#   Examples:
+#>  $win->add_tooltip('image1', "This is a tooltip");
+#>  --------------------------------------
+#>  $win->add_tooltip('image1', "This is a longer tooltip text \
+#>                               with a visual break to handle \
+#>                               it nicer in the code.\nAlso line \
+#>                               breaks can be added, too.");
 # ---------------------------------------------------------------------
-sub add_tooltip($@) {
+sub add_tooltip #(<name>, <text>)
+{
     my $self = shift;
     my $name = shift;
     my $object = $self->get_object($name);
 
-    # Check if tooltip should use
+    # Check if tooltip can be used
     if (defined($object->{tip})) {
         # remove all spaces/tabs if a backslash is found => wrap in script
         # in long text for better readability
         $object->{tip} =~ s/\R\h+//g;
         if ($object->{type} eq 'NotebookPage') {
             # add tooltip to label widget of the page if avaliable
-            my $notebook = $self->get_widget($object->{notebook});
+            my $notebook = $self->_get_ref($object->{notebook});
             my $page_label = $notebook->get_menu_label($object->{ref});
             $object->{pagelabel}->set_tooltip_text(_($object->{tip}));
         } else {
@@ -5415,10 +8275,24 @@ sub add_tooltip($@) {
 
 
 # ---------------------------------------------------------------------
-# get tooltip text from a widget
-# get_tooltip(<name>)
+#   Function: get_tooltip
+#   Returns the current tooltip text of a widget.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuBar>, <GtkFileChooserDialog>, <GtkFontSelectionDialog>, 
+#   <GtkMessageDialog>, <GtkTreeView>, <GtkStatusbar>, <GtkTextView>, <GtkSeparator> and <GtkNotebook>.
+#
+#   Parameters:
+#   <name>      - Name of a widget.
+#
+#   Returns:
+#   Tooltip text or undef.
+#
+#   Example:
+#>  my $text = $win->get_tooltip('image1');
 # ---------------------------------------------------------------------
-sub get_tooltip($@) {
+sub get_tooltip #(<name>)
+{
     my $self = shift;
     my $name = @_;
     
@@ -5426,7 +8300,7 @@ sub get_tooltip($@) {
     my $object = $self->get_object($name);
     my $type = $object->{type};
     
-    unless($type =~ /^(Menubar|Notebook$|Menu$|LinkButton)/) {
+    unless($type =~ /(MenuBar|Menu$|Dialog$|LinkButton|List|Tree|Notebook$|Statusbar|Separator$|DrawingArea|TextView)/) {
         return $object->{tip};
     } else {
         $self->show_error($object, "\"$type\" hasn't a tooltip!");
@@ -5436,10 +8310,27 @@ sub get_tooltip($@) {
 
 
 # ---------------------------------------------------------------------
-# set tooltip of a widget. If no tooltip exist function will add it
-# set_tooltip(<name>, <tooltip_text>)
+#   Function: set_tooltip
+#   Sets a new tooltip text on a widget.
+#
+#   If no tooltip exists function will add it.
+#
+#   Restriction:
+#   Not available for the following widgets: <GtkMenu>, <GtkMenuBar>, <GtkFileChooserDialog>, <GtkFontSelectionDialog>, 
+#   <GtkMessageDialog>, <GtkTreeView>, <GtkStatusbar>, <GtkTextView>, <GtkSeparator> and <GtkNotebook>.
+#
+#   Parameters:
+#   <name>          - Name of a widget.
+#   <tooltip_text>  - Text of the tooltip
+#
+#   Returns:
+#   None.
+#
+#   Example:
+#>  my $text = $win->set_tooltip('image1');
 # ---------------------------------------------------------------------
-sub set_tooltip($@) {
+sub set_tooltip #(<name>, <tooltip_text>)
+{
     my $self = shift;
     my ($name, $text) = @_;
     
@@ -5447,7 +8338,7 @@ sub set_tooltip($@) {
     my $type = $object->{type};
 
 
-    unless($type =~ /^(Menubar|Notebook$|TextView|Menu$)/) {
+    unless($type =~ /(MenuBar|Menu$|Dialog$|LinkButton|List|Tree|Notebook$|Statusbar|Separator$|DrawingArea|TextView)/) {
         # Check if tooltip is set
         if (defined($object->{tip})) {
             $object->{tip} = $text;
@@ -5468,2786 +8359,6 @@ __END__
 
 SimpleGtk2 - Rapid Application Development Library for Gtk+ version 2
 
-=head1 SYNOPSIS
-
-    use SimpleGtk2;
-    
-    # Toplevel window
-    my $win = SimpleGtk2->new_window(Type => 'toplevel', Name => 'mainWindow', 
-                                    Title => 'testem-all', Size => [400, 400]);
-    
-    # menu bar
-    $win->add_menu_bar(Name => 'menubar1', Pos => [0,0]);
-    
-    # menu Edit
-    $win->add_menu(Name => 'menu_edit', Title => '_Edit', Menubar => 'menubar1');
-    
-    # menu tearoff
-    $win->add_menu_item(Name => 'menu_item_toff', Type => 'tearoff', 
-                        Menu => 'menu_edit', Tip => 'This is a tearoff');
-    # menu item Save
-    $win->add_menu_item(Name => 'menu_item_save', Icon => 'gtk-save', 
-                        Menu => 'menu_edit', Tip => 'This is the Save entry');
-    # separator
-    $win->add_menu_item(Name => 'menu_item_sep1', Type => 'separator', Menu => 'menu_edit');
-    # icon
-    $win->add_menu_item(Name => 'menu_item_icon', Title => 'Burger', 
-                        Icon => './burger.png', Menu => 'menu_edit', Tip => 'This is the Burger');
-    # check menu
-    $win->add_menu_item(Name => 'menu_item_check', Type => 'check', 
-                        Title => 'Check em', Menu => 'menu_edit', 
-                        Tip => 'This is Check menu', Active => 1);
-    # radio menu
-    $win->add_menu_item(Name => 'menu_item_radio1', Type => 'radio', 
-                        Title => 'First', Menu => 'menu_edit', 
-                        Tip => 'First radio', Group => 'Yeah', Active => 1);
-    $win->add_menu_item(Name => 'menu_item_radio2', Type => 'radio', 
-                        Title => 'Second', Menu => 'menu_edit', 
-                        Tip => 'Second radio', Group => 'Yeah');
-    $win->add_menu_item(Name => 'menu_item_radio3', Type => 'radio', 
-                        Title => '_Third', Menu => 'menu_edit', 
-                        Tip => 'Third radio', Group => 'Yeah');
-    
-    
-    # menu Help
-    $win->add_menu(Name => 'menu_help', Title => '_Help', 
-                   Justify => 'right', Menubar => 'menubar1');
-    # menu item About
-    $win->add_menu_item(Name => 'menu_item_about', Icon => 'gtk-help', 
-                        Menu => 'menu_help', Tip => 'This is the About dialog', 
-                        Sens => 0);
-    
-    $win->show_all();
-
-=head1 DESCRIPTION
-
-SimpleGtk2 is a wrapper.
-
-=head1 GTK+ WIDGETS AND OBJECTS
-
-In this seection all supported widgets and objects with their functions
-are described.
-
-=head1 B<Toplevel>
-
-Window which can contain other widgets. It contains by default a fixed
-container in a scrollable window widget. So whether it is resized
-smaller than defined vertical and/or horizontal scrollbars appear.
-
-=head2 B<new_window()>
-
-Creates a new GtkWindow, which is a toplevel window that can contain
-other widgets.
-
-I<Parameters:>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the window. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the window (displayed in the title bar).
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the window.
-
-B<Fixed> B<=E<gt>> B<E<lt>0/1E<gt>>
-    I<Optional>. Window has a fixed size (not resizable). Default: 0
-(resizable).
-
-B<Iconpath> B<=E<gt>> B<"E<lt>icon_pathE<gt>">
-    I<Optional>. Path to an icon shown in title bar or on iconify
-state.
-
-B<ThemeIcon> B<=E<gt>> B<"E<lt>theme_icon_nameE<gt>">
-    I<Optional>. Icon name from current theme shown in title bar or on
-iconify state.
-
-I<Returns:> A new GtkWindow object.
-
-I<Example:>
-    my $win = SimpleGtk2-E<gt>new_window(Name =E<gt> `mainWindow',
-                                         Title =E<gt> `testem-all',
-                                         Size =E<gt> [400, 400],
-                                         ThemeIcon =E<gt> `emblem-dropbox-syncing');
-
-=head1 B<Message> B<Dialog>
-
-A dialog with an image representing the type of message (Error,
-Question, etc.) alongside some message text.
-
-=head2 B<add_msg_dialog()>
-
-Creates a new GtkMessageDialog object.
-
-I<Parameters:>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the message dialog. Must be a unique name.
-
-B<Modal> B<=E<gt>> B<E<lt>0/1E<gt>>
-    I<Optional>. Sets the dialog modal (default) or nonmodal (1).
-
-B<DType|DialogType> B<=E<gt>> B<"E<lt>dialog_typeE<gt>">
-    Prebuilt sets of buttons. Default: I<none>. Else I<okE<gt>, I<closeE<gt>,
-I<cancelE<gt>, I<yes-no> or I<ok-cancel>.
-
-B<MTyp|MessageType> B<=E<gt>> B<"E<lt>message_typeE<gt>">
-    The type of message icon being displayed: I<infoE<gt>, I<warningE<gt>,
-I<questionE<gt>, I<error> or I<other>.
-
-B<Icon> B<=E<gt>> B<"E<lt>path|stock|nameE<gt>">
-    I<Optional>. Path of an icon, stock id or icon name as message
-icon being displayed.
-
-B<RFunc|ResponseFunction> B<=E<gt>> B<"E<lt>response_functionE<gt>">
-    Function being used for response evaluation. Have to be set if 
-nonmodal (Modal => 0) is chosen.
-
-I<Returns:> None.
-
-=head2 B<show_msg_dialog()>
-
-Shows a created GtkMessageDialog or a simple (modal) one.
-
-B<Simple:>
-    B<show_msg_dialog("E<lt>message_typeE<gt>",> B<"E<lt>dialog_typeE<gt>",> B<"E<lt>message_textE<gt>")>
-
-I<Parameters:>
-
-B<"E<lt>message_typeE<gt>">
-    The type of message icon being displayed: I<info, warning, question, error.>
-
-B<"E<lt>dialog_typeE<gt>">
-    Prebuilt sets of buttons: I<ok, close, cancel, yes-no or ok-cancel.>
-
-B<"E<lt>message_textE<gt>">
-    Sets the dialog message. It can be normal text or Pango markup
-string.
-
-B<For> B<user> B<defined> B<dialog:>
-    B<show_msg_dialog("E<lt>nameE<gt>",> B<"E<lt>message1E<gt>",> B<"E<lt>message2E<gt>")>
-
-I<Parameters:>
-
-B<"E<lt>nameE<gt>">
-    Name of the message dialog. Must be a unique name.
-
-B<"E<lt>message1E<gt>">
-    Sets the first dialog message. It can be normal text or Pango
-markup string.
-
-B<"E<lt>message2E<gt>">
-    I<Optional>. Sets the second dialog message. It can be normal text
-or Pango markup string.
-
-I<Returns:> ok, close, cancel, yes, no - depending on the pressed button.
-
-I<Example:>
-    use SimpleGtk2;
-
-    sub nonModal{
-        my $response = shift;
-        if ($response eq `yes') {print "Yes\n";}
-        else {print "No\n";}
-    }
-    
-    sub Modal {
-        my $window = shift;
-        my $response = $window->show_msg_dialog('diag1', "Message Type", "Warning");
-        if ($response eq `ok') {print "Ok\n";}
-        else {print "Cancel\n";}
-    }
-    
-    sub Simple {
-        my $window = shift;
-        my $response = $window->show_msg_dialog('warning', `yes-no', "This is a simple one");
-        print ucfirst($response) . "\n";
-    }
-
-    # Toplevel window
-    my $win = SimpleGtk2->new_window(Type => `toplevel', Name => `mainWindow', Title => `Message Test', Size => [200, 160]);
-    
-    # Button 1 for modal message dialog
-    $win->add_button(Name => `Button1', Pos => [60, 10], Size => [80, 40], Title => "_Modal");
-    $win->add_signal_handler('Button1', `clicked', sub{\&Modal($win);});
-    
-    # Modal message dialog
-    $win->add_msg_dialog(Name => `diag1', DType => `ok-cancel', MType => `warning', Icon => `gtk-quit');
-    
-    # messages for non-modal message dialog
-    my $FirstMsg = "E<lt>span foreground=\"blue\" size=\"x-large\">Message Type</span>";
-    my $SecondMsg = "E<lt>span foreground='red' size=\"small\" style ='italic'>Info box.</span>";
-    
-    # Button 2 for non-modal message dialog
-    $win->add_button(Name => `Button2', Pos => [60, 60], Size => [80, 40], Title => "_NonModal");
-    $win->add_signal_handler('Button2', `clicked', sub{$win->show_msg_dialog('diag2', $FirstMsg, $SecondMsg);});
-    
-    # Non-modal message dialog
-    $win->add_msg_dialog(Name => `diag2', DType => `yes-no', MType => `info', RFunc => \&nonModal, Modal => 0);
-    
-    # Button 3 for a simple but modal message dialog
-    $win->add_button(Name => `Button3', Pos => [60, 110], Size => [80, 40], Title => "_Simple");
-    $win->add_signal_handler('Button3', `clicked', sub{\&Simple($win);});
-    
-    $win->show_all();
-
-=head1 GtkImage
-
-A widget displaying an image. It is possible to bind a left click
-action to the image. Also a tooltip is possible.
-
-=head2 B<add_image()>
-
-Creates a new GtkImage widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the image. Must be a unique name.
-
-B<Path> B<=E<gt>> B<"E<lt>file_pathE<gt>">
-    Path of an image to show.
-
-B<Pixbuf|Pixbuffer> B<=E<gt>> B<E<lt>pix_buffer_objectE<gt>>
-    Pixbuffer object of an image to show.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    Size of the image. It will be scaled if bigger/smaller.
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-image area.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    # with pixbuf object
-    my $pixbuf = Gtk2::Gdk::Pixbuf-E<gt>new_from_file("./myimage.png");
-    $win-E<gt>add_image(Name =E<gt> `image2',
-                        Pos =E<gt> [240, 100],
-                        Size =E<gt> [50, 50],
-                        Tip =E<gt> `A second picture',
-                        Frame =E<gt> `frame1',
-                        Pixbuf =E<gt> $pixbuf);
-    $win-E<gt>add_signal_handler('image2', `button_press_event', \&Maximize);
-
-=head2 B<get_image()>
-
-object = B<get_image(E<lt>nameE<gt>,> B<[E<lt>keyE<gt>])>
-
-Returns the current Gtk2::Image object if no key is given. Else an
-object or path depending to the key.
-
-I<Possible> I<keys:>
-
-B<"Path">
-    Current path of the image.
-
-B<"Image">
-    Current Gtk2::Image object of the image.
-
-B<"Pixbuf"|"Pixbuffer">
-    Current Gtk2::Gdk::Pixbuf object of the image.
-
-=head2 B<set_image()>
-
-B<set_image(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the widget I<name> .
-
-I<Possible> I<parameters:>
-
-B<Path> B<=E<gt>> B<"E<lt>image_pathE<gt>">
-    Path of the new image.
-
-B<Pixbuf|Pixbuffer> B<=E<gt>> B<"E<lt>pix_buffer_objectE<gt>">
-    A Gtk2::Gdk::Pixbuf object of a new image.
-
-B<Image> B<=E<gt>> B<"E<lt>image_objectE<gt>">
-    A Gtk2::Image object of a new image.
-
-=head2 B<more_functions()>
-
-Available for the image object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkLabel
-
-A widget that displays a small to medium amount of text.
-
-=head2 B<add_label()>
-
-Creates a new GtkLabel widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the label. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the label.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Widget> B<=E<gt>> B<"E<lt>name_of_linked_widgetE<gt>">
-    I<Optional>. If used underlined the refferenced widget name.
-
-B<Justify> B<=E<gt>> B<"E<lt>justifyE<gt>">
-    I<Optional>. Justification of the text: I<left,> I<right,> I<center,> I<fill>.
-
-B<Wrap|Wrapped> B<=E<gt>> B<E<lt>0/1E<gt>>
-    I<Optional>. Wrapping of the text. Only useful in a frame.
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_label(Name =E<gt> `label1',
-                        Pos =E<gt> [10, 20],
-                        Title =E<gt> "A Label.\n"."A new line",
-                        Justify =E<gt> `left');
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the label I<name> depending on the
-given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"Justify">
-    Returns the justification of the label.
-
-B<"Wrap"|"Wrapped">
-    Returns whether lines in the label are automatically wrapped.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the label I<name> depending on the given parameter.
-
-I<Possible> I<parameters:>
-
-B<Justify> B<=E<gt>> B<"E<lt>justifyE<gt>">
-    Sets the justification of the text: I<left,> I<right,> I<center,> I<fill>.
-
-B<Wrap|Wrapped> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Sets the wrapping of the text.
-
-=head2 B<more_functions()>
-
-Available for the label object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkButton
-
-A widget that creates a signal when clicked on.
-
-=head2 B<add_button()>
-
-Creates a new GtkButton widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the button. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the button.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the button. Default is 80x25.
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_button(Name =E<gt> `closeButton',
-                         Pos =E<gt> [10, 45],
-                         Title =E<gt> "_Close",
-                         Tip =E<gt> `Closes the Application',
-                         Frame =E<gt> `frame2');
-    $win-E<gt>add_signal_handler('closeButton', `clicked', sub{Gtk2-E<gt>main_quit;});
-
-=head2 B<more_functions()>
-
-Available for the button object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-
-
-=head1 GtkLinkButton
-
-Create buttons bound to a URL.
-
-=head2 B<add_button()>
-
-Creates a new GtkLinkButton widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the link button. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the link button.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the link button.
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Uri> B<=E<gt>> B<"E<lt>uri-textE<gt>">
-    A valid URI. It is the tooltip as well and will be shown while 
-hovering over the widget.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_link_button(Name =E<gt> `linkButton',
-                              Pos =E<gt> [10, 45],
-                              Title =E<gt> "To SimpleGtk2 site",
-                              Uri =E<gt> `https://github.com/ThomasFunk/SimpleGtk2',
-                              Frame =E<gt> `frame2');
-    $win-E<gt>add_signal_handler('closeButton', `clicked',
-                                [\&openPage, $win-E<gt>get_value('linkButton', 'Uri')]);
-
-=head2 B<get_value()>
-
-state = B<get_value(E<lt>nameE<gt>,> B<"Uri")>
-
-Returns the current uri of the link button I<name>.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<"Uri"> B<=E<gt>> B<"E<lt>uri-textE<gt>")>
-
-Sets a new uri on the link button I<name>.
-
-=head2 B<more_functions()>
-
-Available for the link button object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-
-
-
-
-=head1 GtkCheckButton
-
-Create widgets with a discrete toggle button.
-
-=head2 B<add_check_button()>
-
-Creates a new GtkCheckButton widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the check button. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the check button.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Active> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Sets the status of the check button. 0 = False, 1 = True.
-Default: 0
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_check_button(Name =E<gt> `checkButton1',
-                               Pos =E<gt> [80, 20],
-                               Title =E<gt> `Check button',
-                               Tip =E<gt> `This is a checkbox',
-                               Sig =E<gt> `toggled',
-                               Func =E<gt> []\&DeleteFile, 'bla.txt']);
-
-=head2 B<is_active()>
-
-state = B<is_active(E<lt>nameE<gt>)>
-
-Returns the current state of the check button I<name>.
-
-=head2 B<get_value()>
-
-state = B<get_value(E<lt>nameE<gt>,> B<"Active")>
-
-Returns the current state of the check button I<name>.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Active> B<=E<gt>> B<E<lt>0/1E<gt>)>
-
-Sets a new state on the check button I<name>.
-
-=head2 B<more_functions()>
-
-Available for the check button object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkRadioButton
-
-A choice from multiple check buttons.
-
-=head2 B<add_radio_button()>
-
-Creates a new GtkRadioButton widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the radio button. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the radio button.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Group> B<=E<gt>> B<"E<lt>group_nameE<gt>">
-    Name of the button group the widget is associated to. Must be
-unique.
-
-B<Active> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Sets the status of the radio button. Only one in the group can
-be set to 1! Default: 0
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    # Group of 3 Radio Buttons
-    $win-E<gt>add_radio_button(Name =E<gt> `radio1', Pos =E<gt> [10, 90],
-                               Title =E<gt> "First", Group =E<gt> "lol",
-                               Active =E<gt> 1, Tip =E<gt> "1st radio button",
-                               Frame =E<gt> `frame1');
-    $win-E<gt>add_radio_button(Name =E<gt> `radio2', Pos =E<gt> [10, 110],
-                               Title =E<gt> "_Second", Group =E<gt> "lol",
-                               Tip =E<gt> "2nd radio button", Frame =E<gt> `frame1');
-    $win-E<gt>add_radio_button(Name =E<gt> `radio3', Pos =E<gt> [10, 130],
-                               Title =E<gt> "Third", Group =E<gt> "lol",
-                               Tip =E<gt> "3rd radio button", Frame =E<gt> `frame1');
-
-=head2 B<get_group()>
-
-group/group_name = B<get_group(E<lt>nameE<gt>,> B<["Name"])>
-
-Returns the current group object or name of the group if "Name" is
-given from the radio button I<name>.
-
-=head2 B<set_group()>
-
-B<set_group(E<lt>nameE<gt>,> B<E<lt>group/group_nameE<gt>)>
-
-Sets a new group on the radio button I<name>. It can be used an existing
-group object or group name.
-
-=head2 B<is_active()>
-
-state = B<is_active(E<lt>nameE<gt>)>
-
-Returns the current state of the radio button I<name>.
-
-=head2 B<get_value()>
-
-state = B<get_value(E<lt>nameE<gt>,> B<"Active")>
-
-Returns the current state of the radio button I<name>.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Active> B<=E<gt>> B<E<lt>0/1E<gt>)>
-
-Sets a new state on the radio button I<name>.
-
-=head2 B<more_functions()>
-
-Available for the check button object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>name/groupE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkEntry
-
-A single line text entry field.
-
-=head2 B<add_entry()>
-
-Creates a new GtkEntry widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the entry. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    I<Optional>. Text in the entry field.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    Size of the entry field.
-
-B<Align> B<=E<gt>> B<"E<lt>xalignE<gt>">
-    I<Optional>. Sets the alignment for the contents of the entry:
-left (default), right.
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_entry(Name =E<gt> `entry1',
-                        Pos =E<gt> [200, 20],
-                        Size =E<gt> [100, 20],
-                        Title =E<gt> `A text entry field',
-                        Align =E<gt> `right');
-
-=head2 B<get_value()>
-
-string = B<get_value(E<lt>nameE<gt>,> B<"Align")>
-
-Returns the current alignment string of the entry I<name>.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Align> B<=E<gt>> B<"E<lt>xalignE<gt>")>
-
-Sets a new alignment on the entry I<name>.
-
-=head2 B<more_functions()>
-
-Available for the check button object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkSlider
-
-A horizontal/vertical slider widget for selecting a value from a range
-known as GtkHScale/GtkVScale.
-
-=head2 B<add_slider()>
-
-Creates a new GtkSlider widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the slider. Must be a unique name.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the slider.
-
-B<Orient|Orientation> B<=E<gt>> B<"E<lt>orientationE<gt>">
-    The orientation of the slider (horizontal, vertical).
-
-B<Start> B<=E<gt>> B<E<lt>start_valueE<gt>>
-    I<Optional>. The initial start value. Default: 0.0 (double).
-
-B<Min|Minimum> B<=E<gt>> B<E<lt>min_valueE<gt>>
-    The minimum value (double).
-
-B<Max|Maximum> B<=E<gt>> B<E<lt>max_valueE<gt>>
-    The maximum value (double).
-
-B<Step> B<=E<gt>> B<E<lt>step_in/decreaseE<gt>>
-    The step increment (double).
-
-B<DrawValue> B<=E<gt>> B<E<lt>1/0E<gt>>
-    I<Optional>. Specifies whether the current value is displayed as a
-    string next to the slider.
-
-B<ValuePos|ValuePosition> B<=E<gt>> B<"E<lt>value_positionE<gt>">
-    I<Optional>. Sets the position in which the current value is
-displayed. Default: top. Others: left, right, bottom.
-
-B<Digits> B<=E<gt>> B<E<lt>used_digitsE<gt>>
-    I<Optional>. Number of decimal places the value will be displayed.
-    Default: 0 (1 digit).
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-I<Returns:> None.
-
-I<Example:>
-    # Horizontal
-    $win-E<gt>add_slider(Name =E<gt> `hslider',
-                         Pos =E<gt> [10, 220],
-                         Size =E<gt> [200, -1],
-                         Orient =E<gt> `horizontal',
-                         Start =E<gt> 5,
-                         Min =E<gt> 0,
-                         Max =E<gt> 100,
-                         Step =E<gt> 0.1,
-                         Digits =E<gt> 1,
-                         Tip =E<gt> `Round and round we go',
-                         Frame =E<gt> `frame2');
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the slider I<name> depending on the
-given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"Active">
-    Returns the current active value of the slider.
-
-B<"Min"|"Minimum">
-    Returns the minimum value of the slider.
-
-B<"Max"|"Maximum">
-    Returns the maximum value of the slider.
-
-B<"Step">
-    Returns the current step increment of the slider.
-
-B<"DrawValue">
-    Returns the current active value as a string of the slider.
-
-B<"ValuePos"|"ValuePosition">
-    Returns the position in which the current value is displayed.
-
-B<"Digits">
-    Number of decimal places the value is displayed.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the slider I<name> depending on the given parameter.
-
-I<Possible> I<parameters:>
-
-B<Start> B<=E<gt>> B<E<lt>start_valueE<gt>>
-    Sets a new start value.
-
-B<Active> B<=E<gt>> B<E<lt>active_valueE<gt>>
-    Sets a new active value.
-
-B<Min|Minimum> B<=E<gt>> B<E<lt>min_valueE<gt>>
-    Sets a new minimum value.
-
-B<Max|Maximum> B<=E<gt>> B<E<lt>max_valueE<gt>>
-    Sets a new maximum value.
-
-B<Step> B<=E<gt>> B<E<lt>step_in/decreaseE<gt>>
-    Sets a new step increment.
-
-B<DrawValue> B<=E<gt>> B<E<lt>1/0E<gt>>
-    Specifies whether the current value is displayed as a string
-    next to the slider.
-
-B<ValuePos|ValuePosition> B<=E<gt>> B<"E<lt>value_positionE<gt>">
-    Sets a new position in which the current value is displayed.
-
-B<Digits> B<=E<gt>> B<E<lt>used_digitsE<gt>>
-    Sets a new number of decimal places the value will be
-    displayed.
-
-=head2 B<set_values()>
-
-B<set_values(E<lt>nameE<gt>,> B<Param_x> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<Param_y> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<...)>
-
-Sets a bunch of new values on the slider I<name> depending on the given
-parameters.
-
-This is useful to reinitialize the adjustment (Start, Minimum, Maximum,
-Step and Digits).
-
-I<Possible> I<parameters:>
-See B<set_value> above.
-
-=head2 B<more_functions()>
-
-Available for the slider object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkSpinButton
-
-Retrieve an integer or floating-point number from the user.
-
-=head2 B<add_spin_button()>
-
-Creates a new GtkSpinButton widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the spin button. Must be a unique name.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the spin button.
-
-B<Start> B<=E<gt>> B<E<lt>start_valueE<gt>>
-    I<Optional>. The initial start value. Default: 0.0 (double).
-
-B<Min|Minimum> B<=E<gt>> B<E<lt>min_valueE<gt>>
-    The minimum value (double).
-
-B<Max|Maximum> B<=E<gt>> B<E<lt>max_valueE<gt>>
-    The maximum value (double).
-
-B<Step> B<=E<gt>> B<E<lt>step_in/decreaseE<gt>>
-    The step increment (double).
-
-B<Snap> B<=E<gt>> B<E<lt>0/1E<gt>>
-    I<Optional>. Sets the policy as to whether values are corrected to
-the nearest step increment when an invalid value is provided.
-
-B<Align> B<=E<gt>> B<"E<lt>alignE<gt>">
-    I<Optional>. Sets the alignment for the contents of the spin
-button: left (default), right.
-
-B<Rate|Climbrate> B<=E<gt>> B<E<lt>climb_rateE<gt>>
-    I<Optional>. Sets the amount of acceleration that the spin button
-    has (0.0 to 1.0). Default: 0.0
-
-B<Digits> B<=E<gt>> B<E<lt>used_digitsE<gt>>
-    I<Optional>. Number of decimal places the value will be displayed.
-    Default: 0 (1 digit).
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-Per default I<value-changed> is set to update value immediatelly.
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_spin_button(Name =E<gt> `spin1',
-                              Pos =E<gt> [10, 60],
-                              Start =E<gt> 5,
-                              Min =E<gt> 0,
-                              Max =E<gt> 10,
-                              Step =E<gt> 1,
-                              Tip =E<gt> `Thats a spin button',
-                              Align =E<gt> `right',
-                              Frame =E<gt> `frame1');
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the spin button I<name> depending on
-the given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"Active">
-    Returns the current active value of the spin button.
-
-B<"Align">
-    Returns the alignment for the contents of the spin button.
-
-B<"Min"|"Minimum">
-    Returns the minimum value of the spin button.
-
-B<"Max"|"Maximum">
-    Returns the maximum value of the spin button.
-
-B<"Step">
-    Returns the step increment of the spin button.
-
-B<"Snap">
-    Returns whether the values are corrected to the nearest step.
-
-B<"Rate"|"Climbrate">
-    Returns the amount of acceleration that the spin button
-    actually has.
-
-B<"Digits">
-    Number of decimal places the value is displayed.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the spin button I<name> depending on the given
-parameter.
-
-I<Possible> I<parameters:>
-
-B<Start> B<=E<gt>> B<E<lt>start_valueE<gt>>
-    Sets a new start value.
-
-B<Active> B<=E<gt>> B<E<lt>active_valueE<gt>>
-    Sets a new active value.
-
-B<Min|Minimum> B<=E<gt>> B<E<lt>min_valueE<gt>>
-    Sets a new minimum value.
-
-B<Max|Maximum> B<=E<gt>> B<E<lt>max_valueE<gt>>
-    Sets a new maximum value.
-
-B<Step> B<=E<gt>> B<E<lt>step_in/decreaseE<gt>>
-    Sets a new step increment.
-
-B<Snap> B<=E<gt>> B<E<lt>1/0E<gt>>
-    Sets the policy as to whether values are corrected to the
-    nearest step increment when an invalid value is provided.
-
-B<Rate|Climbrate> B<=E<gt>> B<E<lt>climb_rateE<gt>>
-    Sets a new amount of acceleration that the spin button shall
-    has.
-
-B<Digits> B<=E<gt>> B<E<lt>used_digitsE<gt>>
-    Sets a new number of decimal places the value will be
-    displayed.
-
-=head2 B<set_values()>
-
-B<set_values(E<lt>nameE<gt>,> B<Param_x> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<Param_y> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<...)>
-
-Sets a bunch of new values on the spin button I<name> depending on the
-given parameters.
-
-This is useful to reinitialize the adjustment (Start, Minimum, Maximum,
-Step, Climbrate and Digits).
-
-I<Possible> I<parameters:>
-See B<set_value> above.
-
-=head2 B<more_functions()>
-
-Available for the spin button object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkTextView
-
-Widget that displays a GtkTextBuffer.
-
-=head2 B<add_text_view()>
-
-Creates a new GtkTextView widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the text view. Must be a unique name.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    Size of the text view.
-
-B<Path> B<=E<gt>> B<"E<lt>file_pathE<gt>">
-    Path to the text file.
-
-B<Textbuf|Textbuffer> B<=E<gt>> B<"E<lt>text_buffer_objectE<gt>">
-    Sets the buffer being displayed by the text view.
-
-B<LeftMargin> B<=E<gt>> B<E<lt>in_pixelE<gt>>
-    I<Optional>. Sets the default left margin for text in the text
-    view. Default: 0.
-
-B<RightMargin> B<=E<gt>> B<E<lt>in_pixelE<gt>>
-    I<Optional>. Sets the default right margin for text in the text
-    view. Default: 0.
-
-B<Wrap|Wrapped> B<=E<gt>> B<"E<lt>wrap_modeE<gt>">
-    I<Optional>. Sets the line wrapping for the view. Default: left
-(right, center, fill).
-
-B<Justify> B<=E<gt>> B<"E<lt>justifyE<gt>">
-    I<Optional>. Sets the default justification of text in text_view .
-Default: none (char, word, word-char).
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    # with file
-    $win-E<gt>add_text_view(Name =E<gt> `tview1',
-                            Pos =E<gt> [40, 260],
-                            Size =E<gt> [200, 120],
-                            Tip =E<gt> `A text',
-                            Frame =E<gt> `frame2',
-                            Path =E<gt> `./testem.txt',
-                            Wrapped =E<gt> `char',
-                            LeftMargin =E<gt> 10,
-                            RightMargin =E<gt> 10);
-
-=head2 B<get_textview()>
-
-object/path = B<get_textview(E<lt>nameE<gt>,> B<[E<lt>keyE<gt>])>
-
-Returns the current text view object of the text view I<name> if no key is
-given. Else an object/path depending on the given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"Path">
-    Returns the path of the text file.
-
-B<"Textview">
-    Returns the text view object.
-
-B<"Textbuf"|"Textbuffer">
-    Returns the text buffer object.
-
-=head2 B<set_textview()>
-
-B<set_textview(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the text view I<name> depending on the given
-parameter.
-
-I<Possible> I<parameters:>
-
-B<Path> B<=E<gt>> B<"E<lt>pathE<gt>">
-    Sets a path to a new text file.
-
-B<Textbuf|Textbuffer> B<=E<gt>> B<E<lt>text_buffer_objectE<gt>>
-    Sets a new buffer with content being displayed by the text
-    view.
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the text view I<name> depending on the
-given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"LeftMargin">
-    Returns the left margin size of paragraphs in the text view.
-
-B<"RightMargin">
-    Returns the right margin size of paragraphs in the text view.
-
-B<"Wrap"|"Wrapped">
-    Returns the current wrap mode.
-
-B<"Justify">
-    Returns the justification of the text view.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the text view I<name> depending on the given
-parameter.
-
-I<Possible> I<parameters:>
-
-B<LeftMargin> B<=E<gt>> B<E<lt>in_pixelE<gt>>
-    Sets the default left margin for text in the text view.
-
-B<RightMargin> B<=E<gt>> B<E<lt>in_pixelE<gt>>
-    Sets the default right margin for text in the text view.
-
-B<Wrap|Wrapped> B<=E<gt>> B<"E<lt>wrap_modeE<gt>">
-    Sets the line wrapping for the view.
-
-B<Justify> B<=E<gt>> B<"E<lt>justifyE<gt>">
-    Sets the default justification of text in text_view.
-
-=head2 B<set_values()>
-
-B<set_values(E<lt>nameE<gt>,> B<Param_x> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<Param_y> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<...)>
-
-Sets a bunch of new values on the text view I<name> depending on the given
-parameters.
-
-I<Possible> I<parameters:>
-See B<set_value> above.
-
-=head2 B<more_functions()>
-
-Available for the text view object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 B<Tree> B<and> B<List> B<Widgets>
-
-blaa balll
-
-=head1 GtkComboBox
-
-A widget used to choose from a list of items.
-
-=head2 B<add_combo_box()>
-
-Creates a new GtkComboBox widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the combo box. Must be a unique name.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the combo box.
-
-B<Data> B<=E<gt>> B<[E<lt>Array_of_valuesE<gt>]>
-    Array of values/strings being displayed in the combo box.
-
-B<Start> B<=E<gt>> B<"E<lt>start_at_indexE<gt>">
-    I<Optional>. Sets the active item of the combo box to be the item
-at index. Default: 0.
-
-B<Columns> B<=E<gt>> B<E<lt>wrap_list_to_x_columnsE<gt>>
-    I<Optional>. Sets the number of columns to display.
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_combo_box(Name =E<gt> `combo1',
-                            Pos =E<gt> [100, 60],
-                            Data =E<gt> ['one', `two', `three', `four'],
-                            Start =E<gt> 1,
-                            Tip =E<gt> `Jup',
-                            Frame =E<gt> `frame1');
-
-=head2 B<is_active()>
-
-state = B<is_active(E<lt>nameE<gt>,> B<E<lt>value/string>)>
-
-Returns the state whether a given value/string is current active in
-combo box I<name>.
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the combo box I<name> depending on the
-given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"Active">
-    Returns the current index of active value.
-
-B<"Data">
-    Returns the data array of the combo box.
-
-B<"Columns">
-    Returns the current number of columns to display.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the text view I<name> depending on the given
-parameter.
-
-I<Possible> I<parameters:>
-
-B<Active> B<=E<gt>> B<"E<lt>active_indexE<gt>">
-    Sets the active item of the combo box to be the item at index.
-
-B<Data> B<=E<gt>> B<[E<lt>Array_of_valuesE<gt>]>
-    Sets a new array of values/strings being displayed in the combo
-box.
-
-B<Columns> B<=E<gt>> B<E<lt>wrap_list_to_x_columnsE<gt>>
-    Sets the number of columns to display.
-
-=head2 B<set_values()>
-
-B<set_values(E<lt>nameE<gt>,> B<Param_x> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<Param_y> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<...)>
-
-Sets a bunch of new values on the combo box I<name> depending on the given
-parameters.
-
-I<Possible> I<parameters:>
-See B<set_value> above.
-
-=head2 B<get_title()>
-
-string = B<get_title(E<lt>nameE<gt>)>
-
-Returns the current active string of the combo box I<name>.
-
-=head2 B<set_title()>
-
-B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-Set the given text as current active item if available.
-
-=head2 B<more_functions()>
-
-Available for the combo box object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkMenuBar
-
-A menu bar widget for holding menus.
-
-=head2 B<add_menu_bar()>
-
-Creates a new GtkMenuBar widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the menu bar. Must be a unique name.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the menu bar. Default is complete window
-width.
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_menu_bar(Name =E<gt> `menubar1', Pos =E<gt> [0,0]);
-
-=head2 B<get_pos()>
-
-(x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-Returns the current position (in pixel) of the menu bar I<name> in the
-window/frame/page.
-
-=head2 B<set_pos()>
-
-B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-Sets a new position (in pixel) to the menu bar I<name> at I<new>B<_>I<x> and I<new>B<_>I<y>.
-
-=head2 B<get_size()>
-
-(width, height) = B<get_size(E<lt>nameE<gt>)>
-
-Returns the current width and height (in pixel) of the menu bar I<name>.
-
-=head2 B<set_size()>
-
-B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-Sets the new width and height (in pixel) of the menu bar I<name> at
-I<new>B<_>I<width> and I<new>B<_>I<height>.
-
-=head2 B<more_functions()>
-
-Available for the menu bar object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkMenu
-
-A menu widget used for holding menu item widgets.
-
-=head2 B<add_menu()>
-
-Creates a new GtkMenu widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the menu. Must be a unique name.
-
-B<Menubar> B<=E<gt>> B<"E<lt>menu_bar_nameE<gt>">
-    Name of the menu bar which shall hold the menu.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the menu.
-
-B<Justify> B<=E<gt>> B<"E<lt>justifyE<gt>">
-    I<Optional>. Justification of the text: left (default), right.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_menu(Name =E<gt> `menu_help', Title =E<gt> `_Help', 
-                       Justify =E<gt> `right', Menubar =E<gt> `menubar1');
-
-=head2 B<get_value()>
-
-string = B<get_value(E<lt>nameE<gt>,> B<"Justify")>
-
-Returns the current justification of the menu I<name>.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Justify> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new justification on the menu I<name>.
-
-=head2 B<more_functions()>
-
-Available for the menu object:
-
-
-=over 3
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkMenuItem
-
-The widget used for item in menus.
-
-=head2 B<add_menu_item()>
-
-Creates a new GtkMenuItem widget.
-
-I<Parameters>
-
-B<Type> B<=E<gt>> B<"E<lt>typeE<gt>">
-    I<Optional>. Menu item type. Default: Item. Others are: I<tearoff,>
-I<radio,> I<check,> I<separator>.
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the menu item. Must be a unique name.
-
-B<Menu> B<=E<gt>> B<"E<lt>menu_nameE<gt>">
-    Name of the menu which shall hold the menu item.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    I<Optional>. Title of the menu item. Not usuable for tearoff and
-separator.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget. Not available for separator.
-
-B<Icon> B<=E<gt>> B<"E<lt>path|stock|nameE<gt>">
-    I<Optional>. Path of an icon, stock id or icon name on a standard
-menu item.
-
-B<Group> B<=E<gt>> B<"E<lt>group_nameE<gt>">
-    Name of the radio menu group the widget is associated to. Must
-be unique.
-
-B<Active> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Sets the status of the radio menu. Only one in the group can be
-set to 1! Default: 0
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    # menu tearoff
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_toff', Type =E<gt> `tearoff',
-                            Menu =E<gt> `menu_edit', Tip =E<gt> `This is a tearoff');
-    # menu item Save
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_save', Icon =E<gt> `gtk-save',
-                            Menu =E<gt> `menu_edit', Tip =E<gt> `This is the Save entry');
-    # separator
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_sep1', 
-                            Type =E<gt> `separator', Menu =E<gt> `menu_edit');
-    # icon
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_icon', Title =E<gt> `Burger',
-                            Icon =E<gt> `./1.png', Menu =E<gt> `menu_edit',
-                            Tip =E<gt> `This is a Burger');
-    # check menu
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_check', Type =E<gt> `check',
-                            Title =E<gt> `Check em', Menu =E<gt> `menu_edit',
-                            Tip =E<gt> `This is a Check menu', Active =E<gt> 1);
-    # radio menu
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio1', Type =E<gt> `radio',
-                            Title =E<gt> `First', Menu =E<gt> `menu_edit',
-                            Tip =E<gt> `First radio', Group =E<gt> `Yeah', Active =E<gt> 1);
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio2', Type =E<gt> `radio',
-                            Title =E<gt> `Second', Menu =E<gt> `menu_edit',
-                            Tip =E<gt> `Second radio', Group =E<gt> `Yeah');
-    $win-E<gt>add_menu_item(Name =E<gt> `menu_item_radio3', Type =E<gt> `radio',
-                            Title =E<gt> `_Third', Menu =E<gt> `menu_edit',
-                            Tip =E<gt> `Third radio', Group =E<gt> `Yeah');
-
-=head2 B<get_group()>
-
-group/group_name = B<get_group(E<lt>nameE<gt>,> B<["Name"])>
-
-Returns the current group object or name of the group if "Name" is
-given from a radio menu item I<name>.
-
-=head2 B<set_group()>
-
-B<set_group(E<lt>nameE<gt>,> B<E<lt>group/group_nameE<gt>)>
-
-Sets a new group on a radio menu item I<name>. It can be used an existing
-group object or group name.
-
-=head2 B<get_value()>
-
-string/state = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/state of a menu item I<name> depending on the
-given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"IconPath">
-    Returns the path of the used icon on a standard menu item or
-    undef.
-
-B<"StockIcon">
-    Returns the stock id of the used stock icon on a standard menu
-    item or undef.
-
-B<"IconName">
-    Returns the name of the used theme icon on a standard menu item
-    or undef.
-
-B<"Icon">
-    Returns the path/stock id/name of the used icon on a standard
-    menu item or undef.
-
-B<"Active">
-    Returns the current state of a radio menu item.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on a menu item I<name> depending on the given parameter.
-
-I<Possible> I<parameters:>
-
-B<Icon> B<=E<gt>> B<"E<lt>path|stock|nameE<gt>">
-    Sets path of an icon, stock id or icon name on a standard menu
-item.
-
-B<Active> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Sets a new state on a radio menu item.
-
-=head2 B<more_functions()>
-
-Available for the menu item object:
-
-
-=over 3
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>name/groupE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkNotebook
-
-A tabbed notebook container.
-
-=head2 B<add_notebook()>
-
-Creates a new GtkNotebook container.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the notebook. Must be a unique name.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the notebook.
-
-B<Tabs> B<=E<gt>> B<"E<lt>positionE<gt>">
-    I<Optional>. Sets the edge at which the tabs for switching pages
-are drawn. Default: top (left, right, bottom, none)
-
-B<Scroll|Scrollable> B<=E<gt>> B<E<lt>0/1E<gt>>
-    I<Optional>. Sets whether the tab label area will have arrows for
-scrolling. Default: 1.
-
-B<Popup> B<=E<gt>> B<E<lt>0/1E<gt>>
-    I<Optional>. Enables a popup menu: if the user clicks with right
-mouse button on the tab labels, a menu with all the pages will
-be popped up. Default: 0.
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_notebook(Name =E<gt> `NB1',
-                           Pos =E<gt> [10, 10],
-                           Size =E<gt> [200, 200],
-                           Tabs =E<gt> `top',
-                           Scroll =E<gt> 1,
-                           Popup =E<gt> 1);
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the notebook I<name> depending on the
-given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"Current"|"CurrentPage">
-    Returns the page number of the current page.
-
-B<"Pages">
-    Returns the number of pages in the notebook.
-
-B<"Popup">
-    Returns 1 whether the popup is activated. Else 0.
-
-B<"No2Name"|"Number2Name">
-    get page name with the page number.
-
-B<"Scroll"|"Scrollable">
-    Returns whether the tab label area has arrows for scrolling.
-
-B<"Tabs">
-    Returns the edge at which the tabs are drawn or I<none>.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the notebook I<name> depending on the given parameter.
-
-I<Possible> I<parameters:>
-
-B<Current|CurrentPage> B<=E<gt>> B<E<lt>page_number|next|prevE<gt>>
-    Sets the current page.
-
-B<Popup> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Enables the popup menu.
-
-B<Scroll|Scrollable> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Sets whether the tab label area will have arrows for scrolling.
-
-B<ShowTabs> B<=E<gt>> B<E<lt>0/1E<gt>>
-    Sets whether to show the tabs for the notebook or not.
-
-B<Tabs> B<=E<gt>> B<"E<lt>positionE<gt>">
-    Sets the edge at which the tabs are drawn.
-
-=head2 B<more_functions()>
-
-Available for the notebook object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkNotebookPage
-
-A notebook page container.
-
-=head2 B<add_nb_page()>
-
-Creates a new GtkNotebookPage container.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the notebook page. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    Title of the notebook page.
-
-B<Notebook> B<=E<gt>> B<"E<lt>notebook_nameE<gt>">
-    Name of the notebook where the page shall appear. Must be a
-unique name.
-
-B<Pos_n|PositionNumber> B<=E<gt>> B<E<lt>0/1E<gt>>
-    I<Optional>. Insert a page into the notebook at the given
-position.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    # append page
-    $win-E<gt>add_nb_page(Name =E<gt> "NB_page3",
-                          Title =E<gt> "Page 3",
-                          Notebook =E<gt> `NB1',
-                          Tip =E<gt> "This is page 3");
-    # insert page
-    $win-E<gt>add_nb_page(Name =E<gt> "NB_page2",
-                          Pos_n =E<gt> 1,
-                          Title =E<gt> "Page 2",
-                          Notebook =E<gt> `NB1',
-                          Tip =E<gt> "This is page 2");
-
-=head2 B<remove_nb_page()>
-
-B<remove_nb_page(E<lt>nb_nameE<gt>,> B<E<lt>title/numberE<gt>)>
-
-Removes a notebook page from notebook I<nb>B<_>I<name> with its title or number.
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the notebook page I<name> depending on
-the given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"PageNumber">
-    Returns the page number of the notebook page.
-
-B<"Notebook">
-    Returns the name of the notebook.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<reorder> B<=E<gt>> B<E<lt>new_positionE<gt>)>
-
-Sets a new value on the notebook page I<name> depending on the given
-parameter.
-
-=head2 B<more_functions()>
-
-Available for the notebook page object:
-
-
-=over 3
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkFrame
-
-A decorative frame with an optional label.
-
-=head2 B<add_frame()>
-
-Creates a new GtkFrame widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the frame. Must be a unique name.
-
-B<Title> B<=E<gt>> B<"E<lt>titleE<gt>">
-    I<Optional>. Title of the frame.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    Size of the frame.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-I<Returns:> None.
-
-I<Example:>
-    $win-E<gt>add_frame(Name =E<gt> `frame1',
-                        Pos =E<gt> [5, 5],
-                        Size =E<gt> [390, 190],
-                        Title =E<gt> ` A Frame around `);
-
-=head2 B<more_functions()>
-
-Available for the frame object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_title(E<lt>nameE<gt>)>
-
-=item *   B<set_title(E<lt>nameE<gt>,> B<E<lt>text>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 GtkScrollbar
-
-A horizontal/vertical scrollbar.
-
-=head2 B<add_scrollbar()>
-
-Creates a new GtkScrollbar widget.
-
-I<Parameters>
-
-B<Name> B<=E<gt>> B<"E<lt>nameE<gt>">
-    Name of the scrollbar. Must be a unique name.
-
-B<Pos|Position> B<=E<gt>> B<[E<lt>pos_xE<gt>,> B<E<lt>pos_yE<gt>]>
-    x- and y-position in the window/frame/page.
-
-B<Size> B<=E<gt>> B<[E<lt>widthE<gt>,> B<E<lt>heightE<gt>]>
-    I<Optional>. Size of the slider.
-
-B<Orient|Orientation> B<=E<gt>> B<"E<lt>orientationE<gt>">
-    The orientation of the scrollbar (horizontal, vertical).
-
-B<Start> B<=E<gt>> B<E<lt>start_valueE<gt>>
-    I<Optional>. The initial start value. Default: 0.0 (double).
-
-B<Min|Minimum> B<=E<gt>> B<E<lt>min_valueE<gt>>
-    The minimum value (double).
-
-B<Max|Maximum> B<=E<gt>> B<E<lt>max_valueE<gt>>
-    The maximum value (double).
-
-B<Step> B<=E<gt>> B<E<lt>step_in/decreaseE<gt>>
-    The step increment (double).
-
-B<Digits> B<=E<gt>> B<E<lt>used_digitsE<gt>>
-    I<Optional>. Number of decimal places the value will be displayed.
-    Default: 0 (1 digit).
-
-B<Frame> B<=E<gt>> B<"E<lt>frame_nameE<gt>">
-    Name of the frame/page where widget is located. Must be unique.
-
-B<Tip|Tooltip> B<=E<gt>> B<"E<lt>tooltip-textE<gt>">
-    I<Optional>. Text of the tooltip shown while hovering over the
-widget.
-
-B<Sens|Sensitive> B<=E<gt>> B<E<lt>sensitiveE<gt>>
-    I<Optional>. Set widget active/inactive. Default: 1 (active).
-
-B<Func|Function> B<=E<gt>> B<E<lt>functionE<gt>>
-    I<Optional>. Function reference/sub. Can be set later with
-    B<add_signal_handler>. If data is used it have to be set as an array.
-
-B<Sig|Signal> B<=E<gt>> B<"E<lt>signalE<gt>">
-    I<Optional>. Signal/event. Only in conjunction with I<Func>.
-
-I<Returns:> None.
-
-I<Example:>
-    # Horizontal
-    $win-E<gt>add_scroll_bar(Name =E<gt> `hscroll', Pos =E<gt> [10, 220],
-                             Size =E<gt> [200, -1], Orient =E<gt> `horizontal',
-                             Start =E<gt> 5, Min =E<gt> 0, Max =E<gt> 100, Step =E<gt> 1, Digits =E<gt> 1,
-                             Tip =E<gt> `From left to right', Frame =E<gt> `frame2');
-    # Vertical
-    $win-E<gt>add_scroll_bar(Name =E<gt> `vscroll', Pos =E<gt> [320, 30],
-                             Size =E<gt> [-1, 150], Orient =E<gt> `vertical',
-                             Start =E<gt> 1.5, Min =E<gt> 0, Max =E<gt> 100, Step =E<gt> 1, Digits =E<gt> 1,
-                             Tip =E<gt> `Up and down', Frame =E<gt> `frame1');
-
-=head2 B<add_scrollbar()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the scrollbar I<name> depending on the
-given key or I<undef>.
-
-I<Possible> I<keys:>
-
-B<"Active">
-    Returns the current active value of the scrollbar.
-
-B<"Min"|"Minimum">
-    Returns the minimum value of the scrollbar.
-
-B<"Max"|"Maximum">
-    Returns the maximum value of the scrollbar.
-
-B<"Step">
-    Returns the current step increment of the scrollbar.
-
-B<"Digits">
-    Number of decimal places the value is displayed.
-
-=head2 B<add_scrollbar()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the scrollbar I<name> depending on the given
-parameter.
-
-I<Possible> I<parameters:>
-
-B<Start> B<=E<gt>> B<E<lt>start_valueE<gt>>
-    Sets a new start value.
-
-B<Active> B<=E<gt>> B<E<lt>active_valueE<gt>>
-    Sets a new active value.
-
-B<Min|Minimum> B<=E<gt>> B<E<lt>min_valueE<gt>>
-    Sets a new minimum value.
-
-B<Max|Maximum> B<=E<gt>> B<E<lt>max_valueE<gt>>
-    Sets a new maximum value.
-
-B<Step> B<=E<gt>> B<E<lt>step_in/decreaseE<gt>>
-    Sets a new step increment.
-
-B<Digits> B<=E<gt>> B<E<lt>used_digitsE<gt>>
-    Sets a new number of decimal places the value will be
-    displayed.
-
-=head2 B<add_scrollbar()>
-
-B<set_values(E<lt>nameE<gt>,> B<Param_x> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<Param_y> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<...)>
-
-Sets a bunch of new values on the scrollbar I<name> depending on the given
-parameters.
-
-This is useful to reinitialize the adjustment (Start, Minimum, Maximum,
-Step and Digits).
-
-I<Possible> I<parameters:>
-See B<set_value> above.
-
-=head2 B<more_functions()>
-
-Available for the scrollbar object:
-
-
-=over 3
-
-=item *   B<hide_widget(E<lt>nameE<gt>)>
-
-=item *   B<show_widget(E<lt>nameE<gt>)>
-
-=item *   (x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-=item *   B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-=item *   state = B<is_sensitive(E<lt>nameE<gt>)>
-
-=item *   B<set_sensitive(E<lt>nameE<gt>,> B<E<lt>stateE<gt>)>
-
-=item *   (width, height) = B<get_size(E<lt>nameE<gt>)>
-
-=item *   B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-=item *   string = B<get_tooltip(E<lt>nameE<gt>)>
-
-=item *   B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-=back
-
-For more detailed information see section B<COMMON> B<FUNCTIONS>.
-
-=head1 COMMON FUNCTIONS
-
-=head2 B<hide_widget()>
-
-B<hide_widget(E<lt>nameE<gt>)>
-
-Hide the widget I<name>.
-
-Not available for the following widgets: I<GtkMenu,> I<GtkMenuItem,>
-I<GtkNotebookPage>
-
-=head2 B<show_widget()>
-
-B<show_widget(E<lt>nameE<gt>)>
-
-Show the widget I<name>.
-
-Not available for the following widgets: I<GtkMenu,> I<GtkMenuItem,>
-I<GtkNotebookPage>
-
-=head2 B<get_pos()>
-
-(x_pos, y_pos) = B<get_pos(E<lt>nameE<gt>)>
-
-Returns the current position (in pixel) of the widget I<name> in the
-window/frame/page.
-
-Not available for the following widgets: I<GtkMenu,> I<GtkMenuItem,>
-I<GtkNotebookPage>
-
-=head2 B<set_pos()>
-
-B<set_pos(E<lt>nameE<gt>,> B<E<lt>new_xE<gt>,> B<E<lt>new_yE<gt>)>
-
-Sets the new position (in pixel) of the widget I<name> at I<new>B<_>I<x> and I<new>B<_>I<y>.
-
-Not available for the following widgets: I<GtkMenu,> I<GtkMenuItem,>
-I<GtkNotebookPage>
-
-=head2 B<get_size()>
-
-(width, height) = B<get_size(E<lt>nameE<gt>)>
-
-Returns the current width and height (in pixel) of the widget I<name>.
-
-Not available for the following widgets: I<GtkMenu,> I<GtkMenuItem,>
-I<GtkNotebookPage>
-
-=head2 B<set_size()>
-
-B<set_size(E<lt>nameE<gt>,> B<E<lt>new_widthE<gt>,> B<E<lt>new_height>)>
-
-Sets the new width and height (in pixel) of the widget I<name> at
-I<new>B<_>I<width> and I<new>B<_>I<height>.
-
-Not available for the following widgets: I<GtkCheckButton,>
-I<GtkRadioButton,> I<GtkLabel,> I<GtkMenu,> I<GtkMenuItem,> I<GtkNotebookPage>
-
-=head2 B<get_title()>
-
-string = B<get_title(E<lt>nameE<gt>)>
-
-Returns the current title text of the widget I<name> or I<undef>.
-
-Not available for the following widgets: I<GtkSlider,> I<GtkScrollBar,>
-I<GtkImage,> I<GtkTextView,> I<GtkMenuBar,> I<GtkNotebook>
-
-=head2 B<set_title()>
-
-B<set_title(E<lt>nameE<gt>,> B<E<lt>new_titleE<gt>)>
-
-Sets a new title to the widget I<name>.
-
-Not available for the following widgets: I<GtkSlider,> I<GtkScrollBar,>
-I<GtkImage,> I<GtkTextView,> I<GtkMenuBar,> I<GtkNotebook>
-
-=head2 B<get_tooltip()>
-
-string = B<get_tooltip(E<lt>nameE<gt>)>
-
-Returns the current tooltip text of the widget I<name> or I<undef>.
-
-Not available for the following widgets: I<GtkMenuBar,> I<GtkNotebook,>
-I<GtkMenu>
-
-=head2 B<set_tooltip()>
-
-B<set_tooltip(E<lt>nameE<gt>,> B<E<lt>tooltip_text>)>
-
-Sets a new tooltip text on the widget I<name> . If no tooltip exists
-function will add it.
-
-Not available for the following widgets: I<GtkMenuBar,> I<GtkNotebook,>
-I<GtkMenu>
-
-=head2 B<get_value()>
-
-string/value = B<get_value(E<lt>nameE<gt>,> B<E<lt>keyE<gt>)>
-
-Returns the current string/value of the widget I<name> depending on the
-key or I<undef>.
-
-For more information about the I<<key>> names see the respective widgets.
-
-=head2 B<set_value()>
-
-B<set_value(E<lt>nameE<gt>,> B<Parameter> B<=E<gt>> B<E<lt>new_valueE<gt>)>
-
-Sets a new value on the widget I<name> depending on the given parameter.
-
-For more information about the I<Parameter> names see the respective
-widgets.
-
-=head2 B<set_values()>
-
-B<set_values(E<lt>nameE<gt>,> B<Param_x> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<Param_y> B<=E<gt>> B<E<lt>new_valueE<gt>,> B<...)>
-
-Sets a bunch of new values on the widget I<name> depending on the given
-parameter.
-
-For more information about the I<Param> names see the respective widgets.
-
-=head2 B<add_signal_handler()>
-
-B<add_signal_handler(E<lt>nameE<gt>,> B<E<lt>signalE<gt>,> B<E<lt>functionE<gt>,> B<E<lt>dataE<gt>)>
-
-This function connects a signal to a sub procedure related to the
-widget I<name>.
-
-I<Possible> I<parameters:>
-
-B<E<lt>signalE<gt>>
-    Signal which will be "emitted" by the widget I<name>. See Gtk+
-    documentation for more info.
-
-B<E<lt>functionE<gt>>
-    Function to execute whether I<signal> appears.
-
-B<E<lt>dataE<gt>>
-    the data you wish to have passed to this function.
-
-=head2 B<remove_signal_handler()>
-
-B<remove_signal_handler(E<lt>nameE<gt>,> B<E<lt>signalE<gt>)>
-
-This function removes an available signal_handler (a signal-function
-pair) from the widget I<name>.
-
-I<Possible> I<parameters:>
-
-B<E<lt>signalE<gt>>
-    Name of the signal used by the widget I<name>.
-
-=head2 B<show_all()>
-
-B<show_all()>
-
-This function enters the main loop, which will cause the program to
-wait for user input via the mouse or keyboard.
-
-=head1 SPECIAL FUNCTIONS
-
-These functions allow access to the internal parts like the Gtk objects
-used inside the library.
-
-If needed use them with care! They can confuse the internal structure
-completelly with incorrect usage!
-
-But on the other hand with these function it is possible to use those
-Gtk+ function which aren't available in the library.
-
-=head2 B<get_object()>
-
-object = B<get_object(E<lt>name|widget>)>
-
-Returns an object hash from the internal objects list. It can got with
-the name or the reference object of a widget.
-
-=head2 B<get_widget()>
-
-reference = B<get_widget(E<lt>nameE<gt>)>
-
-Returns the reference of the widget I<name>.
-
-=head1 INTERNALS
-
-In this section information for deeper usage of the library are
-described.
-
-The same as said in SPECIAL FUNCTIONS goes for the following, too:
-
-Use this information with care!
-
-=head2 B<An> B<internal> B<object>
-
-All widget objects are stored as a hash in an internal object list hash
-in the respective window created with B<add_window>.
-
-Each object hash has the following base structure:
-    object = (  type =E<gt> <string> || undef,
-    name =E<gt> <string> || undef,
-    title =E<gt> <string> || undef,
-    pos_x =E<gt> <integer> || undef,
-    pos_y =E<gt> <integer> || undef,
-    width =E<gt> <integer> || undef,
-    height =E<gt> <integer> || undef,
-    container =E<gt> <string> || undef,
-    tip =E<gt> <string> || undef,
-    handler =E<gt> <hash> || {},
-    ref =E<gt> <widget_reference> || undef
-    )
-
-Some widget objects have other entries, too. Below they're listed. Also
-the internal used type (case sensitive).
-
-I<GtkImage:>
-
-B<path> B<=E<gt>> B<E<lt>string>> B<||> B<undef>
-    Path of the image.
-
-B<pixbuf> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::Gdk::Pixbuf reference object.
-
-B<image> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::Image reference object.  B<Type:> "Image"
-
-I<GtkLabel:>
-B<Type:> "Label"
-
-I<GtkButton:>
-*Type: "Button"
-
-I<GtkCheckButton:>
-B<Type:> "CheckButton"
-
-I<GtkRadioButton:>
-
-B<group> B<=E<gt>> B<E<lt>string>> B<||> B<undef>
-    Name of the button group.  B<Type:> "RadioButton"
-
-I<GtkEntry:>
-
-B<Type:>
-"Entry"
-
-I<GtkSlider:>
-
-B<adjustment> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::Adjustment reference object.  B<Type:> "Slider"
-
-I<GtkSpinButton:>
-
-B<adjustment> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::Adjustment reference object.
-
-B<climbrate> B<=E<gt>> B<E<lt>integer>> B<||> B<undef>
-    Amount of acceleration that the spin button has.
-
-B<value> B<=E<gt>> B<E<lt>integer>> B<||> B<undef>
-    The initial start or current value.  B<Type:> "SpinButton"
-
-I<GtkTextView:>
-
-B<textview> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::TextView reference object.
-
-B<path> B<=E<gt>> B<E<lt>string>> B<||> B<undef>
-    Path of the text file.
-
-B<textbuf> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::TextBuffer reference object.  B<Type:> "TextView"
-
-I<GtkComboBox:>
-
-B<data> B<=E<gt>> B<E<lt>array>> B<||> B<[]>
-    The array of values/strings being displayed.  B<Type:> "ComboBox"
-
-I<GtkMenuBar:>
-
-B<menubar> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::MenuBar reference object.  B<Type:> "MenuBar"
-
-I<GtkMenu:>
-
-B<title_item> B<=E<gt>> B<E<lt>reference>> B<||> B<undef>
-    Gtk2::MenuItem reference object.  B<Type:> "Menu"
-
-I<GtkMenuItem:>
-
-B<icon> B<=E<gt>> B<E<lt>string>> B<||> B<undef>
-    Path of an icon, stock id or icon name.  B<Type1:> "MenuItem"
-(standard) B<Type2:> "TearOffMenuItem" B<Type3:> "SeparatorMenuItem"
-B<Type4:> "RadioMenuItem" B<Type5:> "CheckMenuItem"
-
-I<GtkNotebook:>
-
-B<popup> B<=E<gt>> B<E<lt>integer>> B<||> B<0>
-    value whether the popup is activated.  B<Type:> "Notebook"
-
-I<GtkNotebookPage:>
-B<Type:> "NotebookPage"
-
-I<GtkFrame:>
-B<Type:> "Frame"
-
-I<GtkScrollbar:>
-B<Type:> "Scrollbar"
-
-=head1 CAVEATS
-
-SimpleGtk2 is based on the GtkFixed container which can place child
-widgets at fixed positions and with fixed sizes, given in pixels.
-GtkFixed performs no automatic layout management.
-
-As the Gtk+ documentation says it could result in truncated text,
-overlapping widgets, and other display bugs.
-
-=head1 BUGS
-
-Bug reports can be sent to fvwmnightshade-workers mailing list at
-https://groups.google.com/forum/?hl=en#!forum/fvwmnightshade-workers or
-submit them under
-https://github.com/Fvwm-Nightshade/Fvwm-Nightshade/issues.
-
-=head1 LICENSE
-
-This software stands under the GPL V2 or higher.
-
-=head1 AUTHOR
-
-(C) 2013 Thomas Funk <t.funk@web.de>
-
-=head1 SEE ALSO
-
-About the widgets in Gtk+ version 2 see the reference site [1] of the
-GNOME project.
-
-Also a good place is the Perl Gtk+ reference on [2].
-
-[1] https://developer.gnome.org/gtk2/stable/index.html
-
-[2] http://gtk2-perl.sourceforge.net/doc/Gtk2-Perl-PodProjDocs/
+For full documentation use the enclosed dhtml file (searchable).
 
 =cut
