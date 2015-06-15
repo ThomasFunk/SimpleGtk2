@@ -1,4 +1,4 @@
-SimpleGtk2 version 0.66
+SimpleGtk2 version 0.67
 =======================
 
 SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
@@ -70,6 +70,7 @@ Layout Containers
 
 Ornaments
     - GtkFrame
+    - GtkSeparator (GtkHSeparator & GtkVSeparator)
 
 Scrolling
     - GtkScrollbar (GtkHScrollbar & GtkVScrollbar)

@@ -124,3 +124,20 @@ Revision history for Perl extension SimpleGtk2.
       - statusbar_simple.pl
     - add 'use strict' to all examples.
     
+0.67  Mo Jun 15 2015
+    - change documentation from perldoc to naturaldocs to get a searchable documentation (dhtml).
+    - remove get_container and add_to_container from EXPORT because these are internal functions.
+    - change their names to _get_container and _add_to_container.
+    - add file for filename and gname for groupname to _extend().
+    - extend type check which widget doesn't have a tooltip in _set_commons(), get_tooltip() and set_tooltip().
+    - extend type check which widgets can't hide/show in hide_widget() and show_widget().
+    - fix bug in get_widget() that the real widget reference is returned and not the container.
+    - add new function _get_ref() for internal use to get the first level widget/container of an SimpleGtk2 widget.
+      like GtkViewport or GtkScrolledWindow.
+    - move get_group() into get_value().
+    - remove set_group() because it's not possible(?) to create a Gtk::Group object :-/.
+    - extend get_fontsize(), get_fontfamily() and get_fontweight() that they can use also within 
+      SimpleGtk2 and not only as standalone functions.
+    - set 'no timeout' to 1 in add_statusbar() so that this is equal to set_sb_text().
+    - add new widget GtkSeperator - a horizontal or vertical separator.
+    - remove the very very long perldoc appendix from the source and add the dhtml documentation.
