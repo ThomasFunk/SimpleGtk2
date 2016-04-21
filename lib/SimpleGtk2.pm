@@ -208,7 +208,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $GETTEXT $LANGUAGE $LC
             set_font_color remove_nb_page initial_draw set_sb_text remove_sb_text 
             clear_sb_stack modify_list_data modify_tree_data);
 
-$VERSION = '0.66';
+$VERSION = '0.68';
 $LANGUAGE = $ENV{LANG} || 'en_US.UTF-8';
 $CODESET = langinfo(CODESET());
 $GETTEXT = 0;
