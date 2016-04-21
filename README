@@ -1,9 +1,9 @@
-SimpleGtk2 version 0.67
+SimpleGtk2 version 0.68
 =======================
 
 SimpleGtk2 is a wrapper around Perl-Gtk2 to allow RAD (Rapid Application 
 Development). It is based on GtkFixed container which allows creating 
-widgets with a minimal effort.
+applications with a minimal effort.
 
 The most needed widgets are implemented with its common functions.
 
@@ -144,26 +144,22 @@ This module requires these other modules and libraries:
 
   Test
   Perl-Gtk2
-  Gtk2::Ex::Simple::List (will be added in the future)
-  Gtk2::Ex::Simple::Tree (will be added in the future)
 
 
 COPYRIGHT AND LICENCE
 
-This software stands under the GPL V2 or higher.
-
 Copyright (C) 2015 by Thomas Funk
+for SimpleGtk2
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as GPL V2 or higher.
+Copyright (C) 2004 by the Gtk2-Perl team 
+for Gtk2::Ex::Simple::List and Gtk2::Ex::Simple::Tree
+
+These libraries are free software; you can redistribute them and/or 
+modify them under the same terms as GPL V2 or higher.
 
 
 BUGS
 
-This library is a work of progress and not finished yet. But is full
-usuable with the available widgets. It is already used for the GUIs in 
-the develop version of Fvwm-Nightshade. So, if someone want to play with
-it, you're welcome. Please send me bug reports or suggestions for 
-improvements, thanks.
-
-Send them to <t.funk@web.de>
+Please send me bug reports or suggestions for improvements to
+<t.funk@web.de> excepting Gtk2::Ex::Simple::List and 
+Gtk2::Ex::Simple::Tree.
