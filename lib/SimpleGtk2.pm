@@ -1189,7 +1189,7 @@ sub show_widget #(<name>)
 sub is_sensitive #(<name>)
 {
     my $self = shift;
-    my $name = @_;
+    my $name = shift;
     
     # get widget
     my $widget = $self->_get_ref($name);
@@ -2112,6 +2112,7 @@ sub get_value #(<name>, <keyname>, or <keyname> => <value>)
     elsif ($object->{type} eq 'Tree') {
         my $treeselection = $object->{treeview}->get_selection();
         my ($model, $iter) = $treeselection->get_selected();
+        return undef unless defined($iter);
         if ($key eq 'iter') {
             return $iter; # because of undef
         }
@@ -3848,7 +3849,7 @@ sub get_image #(<name>, [<keyname>])
 
     if ($type =~ /Image/) {
         # get image reference
-        if ($key eq 'image' or $key == undef) {$image = $object->{image};}
+        unless ($key ne 'image' or defined($key)) {$image = $object->{image};}
         # get pixbuf
         elsif ($key eq 'pixbuffer') {$image = $object->{pixbuf};}
         # get path
@@ -3955,7 +3956,8 @@ sub set_image #(Name => <name>, Path => <file_path>, or Pixbuffer => <pix_buffer
     $object->{ref}->add($image);
     
     # show new image
-    $object->{ref}->show();
+    $object->{image}->show();
+#    $object->{ref}->show();
 }
 
 
