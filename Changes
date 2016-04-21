@@ -141,3 +141,12 @@ Revision history for Perl extension SimpleGtk2.
     - set 'no timeout' to 1 in add_statusbar() so that this is equal to set_sb_text().
     - add new widget GtkSeperator - a horizontal or vertical separator.
     - remove the very very long perldoc appendix from the source and add the dhtml documentation.
+
+0.68 Thu Apr 21 2016
+    - add Gtk2::Ex::Simple::List and Gtk2::Ex::Simple::Tree to the project because both libraries
+      mostly not available in common linux distributions but needed for treestore and liststore
+    - fix some bugs in SimpleGtk2:
+      - in is_sensitive() that name of a widget appears in the correct format.
+      - in get_value() that if iter from treeview is undef no error occur.
+      - in get_image() that the pixbuffer returns if wanted.
+      - in set_image() that a new image will be shown
