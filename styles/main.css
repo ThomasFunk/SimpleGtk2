@@ -23,7 +23,7 @@
 body {
 /*    font: 10pt Verdana, Arial, sans-serif;*/
     font-family: 'Exo 2';
-    font-size: 14px;
+    font-size: 14pt;
     color: #000000;
     margin: 0; padding: 0;
     }
@@ -92,7 +92,7 @@ blockquote {
 
 
 #Menu {
-    font-size: 10pt;
+    font-size: 11pt;
     padding: 10px 0 0 0;
     }
 .ContentPage #Menu,
@@ -110,14 +110,14 @@ blockquote {
 
 
     .MTitle {
-        font-size: 16pt; font-weight: bold; font-variant: small-caps;
+        font-size: 17pt; font-weight: bold; font-variant: small-caps;
         text-align: center;
         padding: 5px 10px 15px 10px;
         border-bottom: 1px dotted #000000;
         margin-bottom: 15px }
 
     .MSubTitle {
-        font-size: 10pt; font-weight: normal; font-variant: normal;
+        font-size: 11pt; font-weight: normal; font-variant: normal;
         margin-top: 1ex; margin-bottom: 5px }
 
 
@@ -150,7 +150,7 @@ blockquote {
         }
 
     .MText {
-        font-size: 9pt; font-style: italic }
+        font-size: 10pt; font-style: italic }
 
     .MLink {
         font-style: italic }
@@ -257,7 +257,7 @@ blockquote {
         }
     #MSearchResultsWindowClose {
         font-weight: bold;
-        font-size: 8pt;
+        font-size: 9pt;
         display: block;
         padding: 2px 5px;
         }
@@ -285,7 +285,7 @@ blockquote {
     border-style: solid;
     border-color: #000000;
     background-color: #FFFFFF;
-    font-size: 10pt;  /* To make 31ex match the menu's 31ex. */
+    font-size: 11pt;  /* To make 31ex match the menu's 31ex. */
     margin-left: 31ex;
     }
 .ContentPage .Firefox #Content {
@@ -295,19 +295,19 @@ blockquote {
 
 
     .CTopic {
-        font-size: 10pt;
+        font-size: 11pt;
         margin-bottom: 3em;
         }
 
 
     .CTitle {
-        font-size: 12pt; font-weight: bold;
+        font-size: 13pt; font-weight: bold;
         border-width: 0 0 1px 0; border-style: solid; border-color: #A0A0A0;
         margin: 0 15px .5em 15px }
 
 /*    .CGroup .CTitle */.CClass .CTitle,
         .CWidget .CTitle {
-        font-size: 16pt; font-variant: small-caps;
+        font-size: 17pt; font-variant: small-caps;
         padding-left: 15px; padding-right: 15px;
         border-width: 0 0 2px 0; border-color: #000000;
         margin-left: 0; margin-right: 0 }
@@ -318,14 +318,14 @@ blockquote {
     .CDatabase .CTitle,
     .CDatabaseTable .CTitle,
     .CSection .CTitle {
-        font-size: 18pt;
+        font-size: 19pt;
         color: #FFFFFF; background-color: #A0A0A0;
         padding: 10px 15px 10px 15px;
         border-width: 2px 0; border-color: #000000;
         margin-left: 0; margin-right: 0 }
 
     #MainTopic .CTitle {
-        font-size: 20pt;
+        font-size: 21pt;
         color: #FFFFFF; background-color: #7070C0;
         padding: 10px 15px 10px 15px;
         border-width: 0 0 3px 0; border-color: #000000;
@@ -341,7 +341,7 @@ blockquote {
         background-color: #FFFFE0;
         padding: 5px;
         border-width: 1px 2px 2px 1px; border-style: solid; border-color: #000000;
-        font-size: 8pt;
+        font-size: 9pt;
         }
 
     .Opera .CToolTip {
@@ -357,7 +357,7 @@ blockquote {
         }
 
     .CHeading {
-        font-weight: bold; font-size: 10pt;
+        font-weight: bold; font-size: 11pt;
         margin: 1.5em 0 .5em 0;
         }
 
@@ -387,7 +387,7 @@ blockquote {
             white-space: nowrap }
 
         .CDLDescription {
-            font-size: 10pt;  /*  For browsers that don't inherit correctly, like Opera 5.  */
+            font-size: 11pt;  /*  For browsers that don't inherit correctly, like Opera 5.  */
             padding-bottom: .5em; padding-left: 5ex }
 
 
@@ -398,7 +398,7 @@ blockquote {
         }
     .CImageCaption {
         font-variant: small-caps;
-        font-size: 8pt;
+        font-size: 9pt;
         color: #808080;
         text-align: center;
         position: relative;
@@ -425,7 +425,7 @@ blockquote {
     }
 
     .Prototype td {
-        font-size: 10pt;
+        font-size: 11pt;
         }
 
     .PDefaultValue,
@@ -485,7 +485,7 @@ blockquote {
     margin: 1.5em 5ex 0 5ex }
 
     .STitle {
-        font-size: 12pt; font-weight: bold;
+        font-size: 13pt; font-weight: bold;
         margin-bottom: .5em }
 
 
@@ -506,7 +506,7 @@ blockquote {
 
 
     .STable {
-        font-size: 10pt; width: 100% }
+        font-size: 11pt; width: 100% }
 
     .SEntry {
         width: 30% }
@@ -545,7 +545,7 @@ blockquote {
     .SDatabase td,
     .SDatabaseTable td,
     .SSection td {
-        font-size: 10pt;
+        font-size: 11pt;
         padding-bottom: .25em }
 
     .SClass td,
@@ -591,7 +591,7 @@ blockquote {
         border-width: 1px 2px 2px 1px; border-style: solid; border-color: #A0A0A0;
         margin-bottom: 3px;
         padding: 2px 2ex;
-        font-size: 10pt;
+        font-size: 11pt;
         background-color: #F4F4F4; color: #606060;
         }
 
@@ -607,7 +607,7 @@ blockquote {
 
     .CHChildNote .CHEntry {
         font-style: italic;
-        font-size: 8pt;
+        font-size: 9pt;
         }
 
     .CHIndent {
@@ -642,13 +642,13 @@ blockquote {
     border-width: 0 0 1px 1px;
     border-style: solid;
     border-color: #000000;
-    font-size: 9pt;  /* To make 27ex match the menu's 27ex. */
+    font-size: 10pt;  /* To make 27ex match the menu's 27ex. */
     margin-left: 27ex;
     }
 
 
     .IPageTitle {
-        font-size: 20pt; font-weight: bold;
+        font-size: 21pt; font-weight: bold;
         color: #FFFFFF; background-color: #7070C0;
         padding: 10px 15px 10px 15px;
         border-width: 0 0 3px 0; border-color: #000000; border-style: solid;
@@ -659,7 +659,7 @@ blockquote {
         }
 
     .INavigationBar {
-        font-size: 10pt;
+        font-size: 11pt;
         text-align: center;
         background-color: #FFFFF0;
         padding: 5px;
@@ -671,7 +671,7 @@ blockquote {
         font-weight: bold }
 
     .IHeading {
-        font-size: 16pt; font-weight: bold;
+        font-size: 17pt; font-weight: bold;
         padding: 2.5em 0 .5em 0;
         text-align: center;
         width: 3.5ex;
@@ -681,11 +681,11 @@ blockquote {
         }
 
     .IEntry {
-        font-size: 10pt;
+        font-size: 11pt;
         padding-left: 1ex;
         }
     .PopupSearchResultsPage .IEntry {
-        font-size: 8pt;
+        font-size: 9pt;
         padding: 1px 5px;
         }
     .PopupSearchResultsPage .Opera9 .IEntry,
@@ -709,7 +709,7 @@ blockquote {
 
     .IndexPage .ISymbolPrefix,
     .FramedIndexPage .ISymbolPrefix {
-        font-size: 10pt;
+        font-size: 11pt;
         text-align: right;
         color: #C47C7C;
         background-color: #F8F8F8;
@@ -722,7 +722,7 @@ blockquote {
         color: #900000;
         }
     .PopupSearchResultsPage .ISymbolPrefix {
-        font-size: 8pt;
+        font-size: 9pt;
         }
 
     .IndexPage #IFirstSymbolPrefix,
@@ -746,11 +746,11 @@ blockquote {
 
     .PopupSearchResultsPage .SRStatus {
         padding: 2px 5px;
-        font-size: 8pt;
+        font-size: 9pt;
         font-style: italic;
         }
     .FramedSearchResultsPage .SRStatus {
-        font-size: 10pt;
+        font-size: 11pt;
         font-style: italic;
         }
 
@@ -761,7 +761,7 @@ blockquote {
 
 
 #Footer {
-    font-size: 8pt;
+    font-size: 9pt;
     color: #989898;
     text-align: right;
     }
